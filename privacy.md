@@ -76,4 +76,4 @@ top of this page.
 ## Contact
 
 If you have questions about this privacy policy or want to request deletion of 
-your data, contact: **[your-email@example.com]**
+your data, contact: trevorlriley@gmail.com
