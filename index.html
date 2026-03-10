@@ -3,57 +3,105 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="google-site-verification" content="R7QlZSIWxgHeutT6_lxI3FPpcE0AUpuzlgZCPXSBSlI" />
-  <title>Nummy — Privacy Policy</title>
+  <title>Nummy — AI Meal Planning</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #222; line-height: 1.7; }
-    h1 { color: #b5451b; }
-    h2 { margin-top: 2em; }
-    a { color: #b5451b; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #FFF9EE;
+      color: #222;
+      min-height: 100vh;
+    }
+    header {
+      text-align: center;
+      padding: 80px 20px 60px;
+    }
+    header h1 {
+      font-size: 3rem;
+      color: #b5451b;
+      letter-spacing: -1px;
+    }
+    header p {
+      font-size: 1.25rem;
+      color: #555;
+      margin-top: 12px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      line-height: 1.6;
+    }
+    .badge {
+      margin-top: 36px;
+    }
+    .badge img {
+      height: 54px;
+    }
+    .features {
+      max-width: 700px;
+      margin: 0 auto;
+      padding: 40px 20px 80px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 24px;
+    }
+    .feature {
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    }
+    .feature .icon { font-size: 2rem; margin-bottom: 10px; }
+    .feature h3 { color: #b5451b; font-size: 1rem; margin-bottom: 6px; }
+    .feature p { font-size: 0.9rem; color: #555; line-height: 1.5; }
+    footer {
+      text-align: center;
+      padding: 24px 20px;
+      font-size: 0.85rem;
+      color: #888;
+      border-top: 1px solid #eee;
+    }
+    footer a { color: #b5451b; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h1>Nummy Privacy Policy</h1>
-  <p><em>Last updated: March 3, 2026</em></p>
 
-  <p>Nummy ("we", "our", or "us") is a personal meal planning app. This policy explains how we handle your information.</p>
+  <header>
+    <h1>Nummy</h1>
+    <p>AI-powered meal planning that learns what you love. Generate weekly meal plans, discover new recipes, and sync to your calendar.</p>
+    <div class="badge">
+      <a href="https://apps.apple.com/app/id6760046578" target="_blank">
+        <img src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg" alt="Download on the App Store" />
+      </a>
+    </div>
+  </header>
 
-  <h2>Information We Collect</h2>
-  <ul>
-    <li><strong>Account information:</strong> Email address and password (stored securely via Supabase).</li>
-    <li><strong>Meal preferences:</strong> Dietary restrictions, allergies, family size, and other preferences you provide.</li>
-    <li><strong>Recipes and meal plans:</strong> Recipes you save and meal plans you generate.</li>
-    <li><strong>Photos:</strong> Images you choose to scan for recipe extraction (processed by Anthropic's API and not stored).</li>
-    <li><strong>Calendar data:</strong> If you connect Google Calendar, we read/write meal plan events only. We do not access other calendar events.</li>
-  </ul>
+  <section class="features">
+    <div class="feature">
+      <div class="icon">🍽️</div>
+      <h3>Weekly Meal Plans</h3>
+      <p>Tell Nummy your preferences and get a personalized week of meals in seconds.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔍</div>
+      <h3>Recipe Discovery</h3>
+      <p>Search thousands of recipes or scan a photo to instantly save any recipe.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">📅</div>
+      <h3>Calendar Sync</h3>
+      <p>Sync your meal plan directly to Google Calendar so you always know what's for dinner.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🛒</div>
+      <h3>Grocery Lists</h3>
+      <p>Automatically generate a shopping list from your weekly plan.</p>
+    </div>
+  </section>
 
-  <h2>How We Use Your Information</h2>
-  <ul>
-    <li>To generate personalized meal plans using AI (Anthropic Claude).</li>
-    <li>To search for recipes matching your preferences (Spoonacular API).</li>
-    <li>To sync your meal plans to Google Calendar if you opt in.</li>
-    <li>To improve your experience across devices.</li>
-  </ul>
-
-  <h2>Third-Party Services</h2>
-  <ul>
-    <li><strong>Supabase</strong> — authentication and data storage (<a href="https://supabase.com/privacy">privacy policy</a>)</li>
-    <li><strong>Anthropic</strong> — AI meal planning and recipe vision (<a href="https://www.anthropic.com/privacy">privacy policy</a>)</li>
-    <li><strong>Spoonacular</strong> — recipe search (<a href="https://spoonacular.com/food-api/docs#Privacy-Policy">privacy policy</a>)</li>
-    <li><strong>Google</strong> — calendar integration (<a href="https://policies.google.com/privacy">privacy policy</a>)</li>
-  </ul>
-
-  <h2>Data Retention</h2>
-  <p>Your data is retained as long as your account is active. You may delete your account and all associated data at any time by contacting us.</p>
-
-  <h2>Children's Privacy</h2>
-  <p>Nummy is not directed at children under 13. We do not knowingly collect information from children under 13.</p>
-
-  <h2>Contact</h2>
-  <p>Questions? Email us at <a href="trevorlriley@gmail.com">support@nummy.app</a> (or update with your actual contact email).</p>
-      <p><a href="/nummy/privacy.html">Privacy Policy</a></p>
-  </body>
-</html>
+  <footer>
+    <p>© 2026 Trevor Riley &nbsp;·&nbsp; <a href="privacy.html">Privacy Policy</a> &nbsp;·&nbsp; <a href="mailto:trevorlriley@email.com">Contact</a></p>
+  </footer>
 
 </body>
 </html>
