@@ -8,6 +8,7 @@ import {
 import type { AgentChatRequest, AgentResponse } from '../../../src/types/agent';
 import type { Recipe, MealType } from '../../../src/types/recipe';
 import type { WeeklyMealPlan, PlannedMeal, DayPlan } from '../../../src/types/mealPlan';
+import type { UserPreferences } from '../../../src/types/user';
 
 // ---------------------------------------------------------------------------
 // Spoonacular API helpers
@@ -60,6 +61,31 @@ class RecipeStore {
   getAll(): Recipe[] {
     return Array.from(this.recipes.values());
   }
+}
+
+// ---------------------------------------------------------------------------
+// Wizard fast-path helpers
+// ---------------------------------------------------------------------------
+
+function buildWizardSearches(message: string, preferences: UserPreferences): Array<Record<string, string | number>> {
+  const base: Record<string, string | number> = { number: 10 };
+
+  const diets = preferences.dietaryRestrictions ?? [];
+  if (diets.length > 0) base.diet = diets[0];
+  const allergies = (preferences.allergies ?? []).filter((a) => a !== 'none');
+  if (allergies.length > 0) base.intolerances = allergies.join(',');
+
+  const msg = message.toLowerCase();
+  const cuisineList = ['italian', 'asian', 'mexican', 'mediterranean', 'indian', 'thai', 'greek', 'french', 'korean', 'japanese', 'chinese'];
+  const cuisine = cuisineList.find((c) => msg.includes(c));
+  const isQuick = msg.includes('30 min') || msg.includes('quick');
+
+  return [
+    { ...base, query: 'breakfast', type: 'breakfast' },
+    { ...base, query: 'quick light lunch salad sandwich', type: 'main course', maxReadyTime: 20 },
+    { ...base, query: cuisine ? `${cuisine} dinner` : 'healthy dinner', type: 'main course', ...(cuisine ? { cuisine } : {}), ...(isQuick ? { maxReadyTime: 30 } : {}) },
+    { ...base, query: cuisine ? cuisine : 'easy weeknight dinner', type: 'main course', ...(cuisine ? { cuisine } : {}) },
+  ];
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +289,81 @@ export async function POST(request: Request): Promise<Response> {
     }
 
     const client = new Anthropic({ apiKey, maxRetries: 0 });
+
+    // ---------------------------------------------------------------------------
+    // WIZARD FAST PATH — single-message plan requests ("right away without asking")
+    // Pre-searches Spoonacular, then makes ONE Haiku call to build the plan.
+    // Completes in ~10-15 s instead of 2+ minutes with the multi-round loop.
+    // ---------------------------------------------------------------------------
+    const isWizard =
+      body.messages.length === 1 &&
+      typeof body.messages[0].content === 'string' &&
+      (body.messages[0].content as string).includes('right away without asking any questions');
+
+    if (isWizard) {
+      const wizardMessage = body.messages[0].content as string;
+
+      // 1. Run targeted Spoonacular searches in parallel (no Claude needed)
+      const wizardSearchParams = buildWizardSearches(wizardMessage, body.context.preferences);
+      await Promise.all(
+        wizardSearchParams.map(async (params) => {
+          const raw = await searchSpoonacular(params);
+          raw.map(mapSpoonacularRecipe).forEach((r) => store.add(r));
+        })
+      );
+
+      // 2. Embed the recipe list in the message so Claude can reference exact IDs
+      const recipeListText = store
+        .getAll()
+        .map((r) => `[${r.id}] ${r.title} | ${r.mealTypes.join('/')} | ${r.cuisineType} | ${r.totalTimeMinutes > 0 ? `~${r.totalTimeMinutes}min` : 'time varies'}`)
+        .join('\n');
+
+      const hasPreSearched = store.getAll().length > 0;
+      const wizardUserMessage = hasPreSearched
+        ? `${wizardMessage}\n\nPRE-SEARCHED RECIPES — use these exact IDs in create_meal_plan:\n${recipeListText}`
+        : wizardMessage;
+      const wizardSystem = hasPreSearched
+        ? systemPrompt +
+          '\n\nWIZARD MODE: Recipes have already been searched and are listed in the user message above. Call create_meal_plan IMMEDIATELY using those IDs. Do NOT call search_recipes — that step is done. You may call generate_recipe for any meal types not covered by the pre-searched list.'
+        : systemPrompt +
+          '\n\nWIZARD MODE: Recipe search is unavailable right now. Use generate_recipe to create all needed meals from scratch, then call create_meal_plan immediately with those generated recipe IDs. Do not call search_recipes.';
+
+      // 3. Single Haiku call — fast and focused
+      const wizardResponse = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system: wizardSystem,
+        tools: agentTools,
+        messages: [{ role: 'user', content: wizardUserMessage }],
+      });
+
+      const wizardTextParts = wizardResponse.content
+        .filter((b) => b.type === 'text')
+        .map((b) => (b as Anthropic.TextBlock).text);
+      const wizardToolBlocks = wizardResponse.content.filter((b) => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
+
+      // 4. Execute tools: generate_recipe first (adds to store), then create_meal_plan
+      for (const block of wizardToolBlocks.filter((b) => b.name === 'generate_recipe')) {
+        handleGenerateRecipe(block.input as Record<string, unknown>, store);
+      }
+      let wizardPlan: WeeklyMealPlan | null = null;
+      const planBlock = wizardToolBlocks.find((b) => b.name === 'create_meal_plan');
+      if (planBlock) {
+        wizardPlan = handleCreateMealPlan(planBlock.input as Record<string, unknown>, store);
+      }
+
+      const wizardPlanIds = new Set<string>(
+        wizardPlan ? wizardPlan.days.flatMap((d) => d.meals.map((m) => m.recipe.id)) : []
+      );
+      const wizardExtra = store.getAll().filter((r) => !wizardPlanIds.has(r.id));
+
+      return Response.json({
+        message: wizardTextParts.join('\n'),
+        plan: wizardPlan,
+        quickReplies: [],
+        ...(wizardExtra.length > 0 ? { extraRecipes: wizardExtra } : {}),
+      } satisfies AgentResponse);
+    }
 
     // Convert messages to Anthropic format
     let messages: Anthropic.MessageParam[] = body.messages.map((m) => ({
