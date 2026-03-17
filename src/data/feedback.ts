@@ -1,0 +1,52 @@
+import { MealFeedback } from '../types/feedback';
+
+export const sampleFeedback: MealFeedback[] = [
+  {
+    id: 'fb-001',
+    plannedMealId: 'pm-mon-breakfast',
+    recipeId: 'recipe-002',
+    date: '2026-02-09',
+    didMakeIt: true,
+    rating: 5,
+    notes: 'Kids loved it! Will definitely make again.',
+    createdAt: '2026-02-09T08:30:00Z',
+  },
+  {
+    id: 'fb-002',
+    plannedMealId: 'pm-mon-lunch',
+    recipeId: 'recipe-001',
+    date: '2026-02-09',
+    didMakeIt: true,
+    rating: 4,
+    notes: 'Great flavor. Next time I would add more tahini dressing.',
+    createdAt: '2026-02-09T13:00:00Z',
+  },
+  {
+    id: 'fb-003',
+    plannedMealId: 'pm-mon-dinner',
+    recipeId: 'recipe-007',
+    date: '2026-02-09',
+    didMakeIt: true,
+    rating: 5,
+    notes: 'Amazing! Restaurant quality. The whole family cleaned their plates.',
+    createdAt: '2026-02-09T19:30:00Z',
+  },
+  {
+    id: 'fb-004',
+    plannedMealId: 'pm-tue-breakfast',
+    recipeId: 'recipe-006',
+    date: '2026-02-10',
+    didMakeIt: false,
+    createdAt: '2026-02-10T09:00:00Z',
+  },
+  {
+    id: 'fb-005',
+    plannedMealId: 'pm-tue-dinner',
+    recipeId: 'recipe-004',
+    date: '2026-02-10',
+    didMakeIt: true,
+    rating: 3,
+    notes: 'Salmon was good but asparagus was a bit overcooked. Will watch the timing next time.',
+    createdAt: '2026-02-10T19:45:00Z',
+  },
+];

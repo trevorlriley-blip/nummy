@@ -1,0 +1,63 @@
+import { StoreLocation, MapRegion } from '../types/store';
+
+export const sampleStores: StoreLocation[] = [
+  {
+    id: 'store-001',
+    name: 'Whole Foods Market',
+    address: '525 N Lamar Blvd, Austin, TX 78703',
+    latitude: 30.2700,
+    longitude: -97.7530,
+    distanceMiles: 1.2,
+    rating: 4.3,
+    priceLevel: 3,
+    openNow: true,
+    phoneNumber: '(512) 476-1206',
+    storeType: 'organic',
+  },
+  {
+    id: 'store-002',
+    name: "Trader Joe's",
+    address: '211 Walter Seaholm Dr, Austin, TX 78701',
+    latitude: 30.2640,
+    longitude: -97.7510,
+    distanceMiles: 2.0,
+    rating: 4.5,
+    priceLevel: 2,
+    openNow: true,
+    phoneNumber: '(512) 872-8991',
+    storeType: 'grocery',
+  },
+  {
+    id: 'store-003',
+    name: 'H-E-B',
+    address: '1000 E 41st St, Austin, TX 78751',
+    latitude: 30.2980,
+    longitude: -97.7220,
+    distanceMiles: 2.5,
+    rating: 4.6,
+    priceLevel: 1,
+    openNow: true,
+    phoneNumber: '(512) 459-8558',
+    storeType: 'supermarket',
+  },
+  {
+    id: 'store-004',
+    name: 'Sprouts Farmers Market',
+    address: '4006 S Lamar Blvd, Austin, TX 78704',
+    latitude: 30.2410,
+    longitude: -97.7890,
+    distanceMiles: 3.1,
+    rating: 4.4,
+    priceLevel: 2,
+    openNow: false,
+    phoneNumber: '(512) 891-7500',
+    storeType: 'organic',
+  },
+];
+
+export const defaultMapRegion: MapRegion = {
+  latitude: 30.2672,
+  longitude: -97.7431,
+  latitudeDelta: 0.08,
+  longitudeDelta: 0.08,
+};
