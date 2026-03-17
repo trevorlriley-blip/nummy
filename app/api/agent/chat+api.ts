@@ -303,6 +303,15 @@ export async function POST(request: Request): Promise<Response> {
     if (isWizard) {
       const wizardMessage = body.messages[0].content as string;
 
+      // Derive meal requirements from context + wizard message text
+      const mealsToInclude = body.context.preferences.mealsToInclude ?? ['breakfast', 'lunch', 'dinner'];
+      const DAY_NAMES_LOWER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+      const msgLower = wizardMessage.toLowerCase();
+      const daysCount = msgLower.includes('every day of the week')
+        ? 7
+        : (DAY_NAMES_LOWER.filter((d) => msgLower.includes(d)).length || 3);
+      const totalMealsNeeded = daysCount * mealsToInclude.length;
+
       // 1. Pre-search Spoonacular in parallel (no Claude needed for this step)
       const wizardSearchParams = buildWizardSearches(wizardMessage, body.context.preferences);
       await Promise.all(
@@ -324,7 +333,7 @@ export async function POST(request: Request): Promise<Response> {
         : wizardMessage;
       const wizardSystem = hasPreSearched
         ? systemPrompt + '\n\nWIZARD MODE: Recipes are pre-loaded above. Select from them and call create_meal_plan with the exact IDs. Use generate_recipe only for meal types not covered. Do NOT call search_recipes.'
-        : systemPrompt + '\n\nWIZARD MODE: Use generate_recipe to create all meals, then call create_meal_plan with those IDs. Do NOT call search_recipes.';
+        : systemPrompt + `\n\nWIZARD MODE: Call generate_recipe exactly ${totalMealsNeeded} times — ONCE for EACH meal slot (${daysCount} days × ${mealsToInclude.length} meal types: ${mealsToInclude.join(', ')}). You MUST make ALL ${totalMealsNeeded} generate_recipe calls covering every meal type for every day before the meal plan is built. Do NOT call search_recipes.`;
 
       // 3. Two-round Haiku loop with forced tool_choice — no ambiguity.
       //    Round 0 (pre-searched): forced create_meal_plan → done in 1 call.
@@ -347,7 +356,7 @@ export async function POST(request: Request): Promise<Response> {
 
         const wizardResponse = await client.messages.create({
           model: 'claude-haiku-4-5-20251001',
-          max_tokens: 4096,
+          max_tokens: isCreateRound ? 4096 : Math.min(16000, Math.max(4096, totalMealsNeeded * 600)),
           system: wizardSystem,
           tools: roundTools,
           tool_choice: roundToolChoice,
