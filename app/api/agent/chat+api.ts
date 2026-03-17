@@ -326,40 +326,47 @@ export async function POST(request: Request): Promise<Response> {
         ? systemPrompt + '\n\nWIZARD MODE: Recipes are pre-loaded above. Select from them and call create_meal_plan with the exact IDs. Use generate_recipe only for meal types not covered. Do NOT call search_recipes.'
         : systemPrompt + '\n\nWIZARD MODE: Use generate_recipe to create all meals, then call create_meal_plan with those IDs. Do NOT call search_recipes.';
 
-      // 3. Two-round Haiku loop (fast: ~5s/round)
-      //    Round 1: Haiku selects/generates recipes
-      //    Round 2: Haiku calls create_meal_plan once it has confirmed IDs from tool results
+      // 3. Two-round Haiku loop with forced tool_choice — no ambiguity.
+      //    Round 0 (pre-searched): forced create_meal_plan → done in 1 call.
+      //    Round 0 (no pre-search): forced generate_recipe → get IDs back.
+      //    Round 1: forced create_meal_plan → done.
+      const generateRecipeTool = agentTools.filter((t) => t.name === 'generate_recipe');
+      const createMealPlanTool = agentTools.filter((t) => t.name === 'create_meal_plan');
+
       let wizardPlan: WeeklyMealPlan | null = null;
       let wizardFinalText = '';
       let wizardMessages: Anthropic.MessageParam[] = [{ role: 'user', content: wizardFirstMessage }];
 
       for (let round = 0; round < 2; round++) {
+        // Round 0: if we have pre-searched recipes → force create_meal_plan immediately.
+        //          if no pre-searched recipes → force generate_recipe to build them.
+        // Round 1: always force create_meal_plan (now has IDs from generate_recipe results).
+        const isCreateRound = round === 1 || hasPreSearched;
+        const roundTools = isCreateRound ? createMealPlanTool : generateRecipeTool;
+        const roundToolChoice: Anthropic.ToolChoiceTool = { type: 'tool', name: isCreateRound ? 'create_meal_plan' : 'generate_recipe' };
+
         const wizardResponse = await client.messages.create({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 4096,
           system: wizardSystem,
-          tools: agentTools,
+          tools: roundTools,
+          tool_choice: roundToolChoice,
           messages: wizardMessages,
         });
 
-        wizardFinalText = wizardResponse.content
+        const wizardTextParts = wizardResponse.content
           .filter((b) => b.type === 'text')
-          .map((b) => (b as Anthropic.TextBlock).text)
-          .join('\n');
+          .map((b) => (b as Anthropic.TextBlock).text);
+        if (wizardTextParts.length) wizardFinalText = wizardTextParts.join('\n');
 
         const wizardToolBlocks = wizardResponse.content.filter((b) => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
         if (wizardToolBlocks.length === 0) break;
 
-        // Execute tools and collect results to feed back
         const wizardToolResults: Anthropic.ToolResultBlockParam[] = [];
-
-        // generate_recipe and search_recipes first, then create_meal_plan
         for (const block of wizardToolBlocks) {
           let result: string;
           if (block.name === 'generate_recipe') {
             result = handleGenerateRecipe(block.input as Record<string, unknown>, store);
-          } else if (block.name === 'search_recipes') {
-            result = JSON.stringify({ results: [], message: 'Recipes are pre-loaded. Use the IDs provided or call generate_recipe.' });
           } else if (block.name === 'create_meal_plan') {
             wizardPlan = handleCreateMealPlan(block.input as Record<string, unknown>, store);
             result = wizardPlan
@@ -373,7 +380,6 @@ export async function POST(request: Request): Promise<Response> {
 
         if (wizardPlan) break;
 
-        // Feed tool results back for round 2
         wizardMessages = [
           ...wizardMessages,
           { role: 'assistant', content: wizardResponse.content },
