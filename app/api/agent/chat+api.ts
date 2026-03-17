@@ -303,7 +303,7 @@ export async function POST(request: Request): Promise<Response> {
     if (isWizard) {
       const wizardMessage = body.messages[0].content as string;
 
-      // 1. Run targeted Spoonacular searches in parallel (no Claude needed)
+      // 1. Pre-search Spoonacular in parallel (no Claude needed for this step)
       const wizardSearchParams = buildWizardSearches(wizardMessage, body.context.preferences);
       await Promise.all(
         wizardSearchParams.map(async (params) => {
@@ -312,44 +312,73 @@ export async function POST(request: Request): Promise<Response> {
         })
       );
 
-      // 2. Embed the recipe list in the message so Claude can reference exact IDs
-      const recipeListText = store
-        .getAll()
+      // 2. Build first-round message — embed pre-searched recipes so Haiku knows the IDs
+      const preSearched = store.getAll();
+      const recipeListText = preSearched
         .map((r) => `[${r.id}] ${r.title} | ${r.mealTypes.join('/')} | ${r.cuisineType} | ${r.totalTimeMinutes > 0 ? `~${r.totalTimeMinutes}min` : 'time varies'}`)
         .join('\n');
 
-      const hasPreSearched = store.getAll().length > 0;
-      const wizardUserMessage = hasPreSearched
-        ? `${wizardMessage}\n\nPRE-SEARCHED RECIPES — use these exact IDs in create_meal_plan:\n${recipeListText}`
+      const hasPreSearched = preSearched.length > 0;
+      const wizardFirstMessage = hasPreSearched
+        ? `${wizardMessage}\n\nPRE-SEARCHED RECIPES — use these exact IDs in create_meal_plan (supplement with generate_recipe if needed):\n${recipeListText}`
         : wizardMessage;
       const wizardSystem = hasPreSearched
-        ? systemPrompt +
-          '\n\nWIZARD MODE: Recipes have already been searched and are listed in the user message above. Call create_meal_plan IMMEDIATELY using those IDs. Do NOT call search_recipes — that step is done. You may call generate_recipe for any meal types not covered by the pre-searched list.'
-        : systemPrompt +
-          '\n\nWIZARD MODE: Recipe search is unavailable right now. Use generate_recipe to create all needed meals from scratch, then call create_meal_plan immediately with those generated recipe IDs. Do not call search_recipes.';
+        ? systemPrompt + '\n\nWIZARD MODE: Recipes are pre-loaded above. Select from them and call create_meal_plan with the exact IDs. Use generate_recipe only for meal types not covered. Do NOT call search_recipes.'
+        : systemPrompt + '\n\nWIZARD MODE: Use generate_recipe to create all meals, then call create_meal_plan with those IDs. Do NOT call search_recipes.';
 
-      // 3. Single Haiku call — fast and focused
-      const wizardResponse = await client.messages.create({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
-        system: wizardSystem,
-        tools: agentTools,
-        messages: [{ role: 'user', content: wizardUserMessage }],
-      });
-
-      const wizardTextParts = wizardResponse.content
-        .filter((b) => b.type === 'text')
-        .map((b) => (b as Anthropic.TextBlock).text);
-      const wizardToolBlocks = wizardResponse.content.filter((b) => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
-
-      // 4. Execute tools: generate_recipe first (adds to store), then create_meal_plan
-      for (const block of wizardToolBlocks.filter((b) => b.name === 'generate_recipe')) {
-        handleGenerateRecipe(block.input as Record<string, unknown>, store);
-      }
+      // 3. Two-round Haiku loop (fast: ~5s/round)
+      //    Round 1: Haiku selects/generates recipes
+      //    Round 2: Haiku calls create_meal_plan once it has confirmed IDs from tool results
       let wizardPlan: WeeklyMealPlan | null = null;
-      const planBlock = wizardToolBlocks.find((b) => b.name === 'create_meal_plan');
-      if (planBlock) {
-        wizardPlan = handleCreateMealPlan(planBlock.input as Record<string, unknown>, store);
+      let wizardFinalText = '';
+      let wizardMessages: Anthropic.MessageParam[] = [{ role: 'user', content: wizardFirstMessage }];
+
+      for (let round = 0; round < 2; round++) {
+        const wizardResponse = await client.messages.create({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 4096,
+          system: wizardSystem,
+          tools: agentTools,
+          messages: wizardMessages,
+        });
+
+        wizardFinalText = wizardResponse.content
+          .filter((b) => b.type === 'text')
+          .map((b) => (b as Anthropic.TextBlock).text)
+          .join('\n');
+
+        const wizardToolBlocks = wizardResponse.content.filter((b) => b.type === 'tool_use') as Anthropic.ToolUseBlock[];
+        if (wizardToolBlocks.length === 0) break;
+
+        // Execute tools and collect results to feed back
+        const wizardToolResults: Anthropic.ToolResultBlockParam[] = [];
+
+        // generate_recipe and search_recipes first, then create_meal_plan
+        for (const block of wizardToolBlocks) {
+          let result: string;
+          if (block.name === 'generate_recipe') {
+            result = handleGenerateRecipe(block.input as Record<string, unknown>, store);
+          } else if (block.name === 'search_recipes') {
+            result = JSON.stringify({ results: [], message: 'Recipes are pre-loaded. Use the IDs provided or call generate_recipe.' });
+          } else if (block.name === 'create_meal_plan') {
+            wizardPlan = handleCreateMealPlan(block.input as Record<string, unknown>, store);
+            result = wizardPlan
+              ? JSON.stringify({ success: true, mealCount: wizardPlan.days.reduce((s, d) => s + d.meals.length, 0) })
+              : JSON.stringify({ success: false, error: 'Some recipe IDs were not found in the store.' });
+          } else {
+            result = JSON.stringify({ error: `Unknown tool: ${block.name}` });
+          }
+          wizardToolResults.push({ type: 'tool_result' as const, tool_use_id: block.id, content: result });
+        }
+
+        if (wizardPlan) break;
+
+        // Feed tool results back for round 2
+        wizardMessages = [
+          ...wizardMessages,
+          { role: 'assistant', content: wizardResponse.content },
+          { role: 'user', content: wizardToolResults },
+        ];
       }
 
       const wizardPlanIds = new Set<string>(
@@ -358,7 +387,7 @@ export async function POST(request: Request): Promise<Response> {
       const wizardExtra = store.getAll().filter((r) => !wizardPlanIds.has(r.id));
 
       return Response.json({
-        message: wizardTextParts.join('\n'),
+        message: wizardFinalText,
         plan: wizardPlan,
         quickReplies: [],
         ...(wizardExtra.length > 0 ? { extraRecipes: wizardExtra } : {}),
