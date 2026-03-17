@@ -80,12 +80,27 @@ function buildWizardSearches(message: string, preferences: UserPreferences): Arr
   const cuisine = cuisineList.find((c) => msg.includes(c));
   const isQuick = msg.includes('30 min') || msg.includes('quick');
 
-  return [
-    { ...base, query: 'breakfast', type: 'breakfast' },
-    { ...base, query: 'quick light lunch salad sandwich', type: 'main course', maxReadyTime: 20 },
-    { ...base, query: cuisine ? `${cuisine} dinner` : 'healthy dinner', type: 'main course', ...(cuisine ? { cuisine } : {}), ...(isQuick ? { maxReadyTime: 30 } : {}) },
-    { ...base, query: cuisine ? cuisine : 'easy weeknight dinner', type: 'main course', ...(cuisine ? { cuisine } : {}) },
-  ];
+  const mealsToInclude = preferences.mealsToInclude ?? ['breakfast', 'lunch', 'dinner'];
+  const searches: Array<Record<string, string | number>> = [];
+
+  if (mealsToInclude.includes('breakfast')) {
+    searches.push({ ...base, query: 'breakfast', type: 'breakfast' });
+  }
+  if (mealsToInclude.includes('lunch')) {
+    searches.push({ ...base, query: 'quick light lunch salad sandwich', type: 'main course', maxReadyTime: 20 });
+  }
+  if (mealsToInclude.includes('dinner')) {
+    searches.push({ ...base, query: cuisine ? `${cuisine} dinner` : 'healthy dinner', type: 'main course', ...(cuisine ? { cuisine } : {}), ...(isQuick ? { maxReadyTime: 30 } : {}) });
+    searches.push({ ...base, query: cuisine ? cuisine : 'easy weeknight dinner', type: 'main course', ...(cuisine ? { cuisine } : {}) });
+  }
+  if (mealsToInclude.includes('dessert')) {
+    searches.push({ ...base, query: 'dessert', type: 'dessert' });
+  }
+  if (mealsToInclude.includes('snack')) {
+    searches.push({ ...base, query: 'healthy snack', type: 'snack' });
+  }
+
+  return searches;
 }
 
 // ---------------------------------------------------------------------------
