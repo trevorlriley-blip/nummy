@@ -80,7 +80,11 @@ function buildWizardSearches(message: string, preferences: UserPreferences): Arr
   const cuisine = cuisineList.find((c) => msg.includes(c));
   const isQuick = msg.includes('30 min') || msg.includes('quick');
 
-  const mealsToInclude = preferences.mealsToInclude ?? ['breakfast', 'lunch', 'dinner'];
+  const mealsToInclude = [
+    ...(preferences.mealsToInclude ?? ['breakfast', 'lunch', 'dinner']),
+    ...(preferences.includeSnacks ? ['snack' as const] : []),
+    ...(preferences.includeDesserts ? ['dessert' as const] : []),
+  ];
   const searches: Array<Record<string, string | number>> = [];
 
   if (mealsToInclude.includes('breakfast')) {
@@ -319,7 +323,12 @@ export async function POST(request: Request): Promise<Response> {
       const wizardMessage = body.messages[0].content as string;
 
       // Derive meal requirements from context + wizard message text
-      const mealsToInclude = body.context.preferences.mealsToInclude ?? ['breakfast', 'lunch', 'dinner'];
+      // Must mirror the mealList logic in agentPrompt.ts (mealsToInclude + includeSnacks + includeDesserts)
+      const mealsToInclude = [
+        ...(body.context.preferences.mealsToInclude ?? ['breakfast', 'lunch', 'dinner']),
+        ...(body.context.preferences.includeSnacks ? ['snack' as const] : []),
+        ...(body.context.preferences.includeDesserts ? ['dessert' as const] : []),
+      ];
       const DAY_NAMES_LOWER = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
       const msgLower = wizardMessage.toLowerCase();
       const daysCount = msgLower.includes('every day of the week')
