@@ -25,6 +25,7 @@ interface AuthContextValue {
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<{ error: string | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -117,6 +118,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await persistSession(null);
   };
 
+  const deleteAccount = async (): Promise<{ error: string | null }> => {
+    if (!session?.access_token) {
+      return { error: 'Not authenticated' };
+    }
+    try {
+      const res = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? ''}/api/delete-account`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: data.error || `Deletion failed (${res.status})` };
+      }
+      await AsyncStorage.clear();
+      await persistSession(null);
+      return { error: null };
+    } catch (e: any) {
+      return { error: e?.message ?? 'Network error' };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       session,
@@ -125,6 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signIn,
       signOut,
+      deleteAccount,
     }}>
       {children}
     </AuthContext.Provider>

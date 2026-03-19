@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   Pressable,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -13,6 +14,7 @@ import {
   Button,
   Divider,
   IconButton,
+  ActivityIndicator,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -27,8 +29,9 @@ export default function ProfileScreen() {
   const theme = useAppTheme();
   const router = useRouter();
   const { user, resetProfile, updatePreferences } = useUser();
-  const { signOut } = useAuth();
+  const { signOut, deleteAccount } = useAuth();
   const { resetOnboarding } = useOnboarding();
+  const [isDeleting, setIsDeleting] = useState(false);
   const { preferences } = user;
 
   const getInitials = (name: string): string => {
@@ -85,6 +88,28 @@ export default function ProfileScreen() {
       route: '/(tabs)/profile/history',
     },
   ];
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This will permanently delete your account and all your data including meal plans, recipes, and preferences. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete My Account',
+          style: 'destructive',
+          onPress: async () => {
+            setIsDeleting(true);
+            const { error } = await deleteAccount();
+            setIsDeleting(false);
+            if (error) {
+              Alert.alert('Error', error);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
@@ -439,6 +464,23 @@ export default function ProfileScreen() {
           Sign Out
         </Button>
 
+        {/* Delete Account */}
+        <Button
+          mode="outlined"
+          icon={isDeleting ? undefined : 'delete-forever-outline'}
+          onPress={handleDeleteAccount}
+          disabled={isDeleting}
+          style={[styles.deleteButton, { borderColor: theme.colors.error }]}
+          textColor={theme.colors.error}
+          contentStyle={styles.resetButtonContent}
+        >
+          {isDeleting ? (
+            <ActivityIndicator size={16} color={theme.colors.error} />
+          ) : (
+            'Delete Account'
+          )}
+        </Button>
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
@@ -514,6 +556,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   signOutButton: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  deleteButton: {
     marginHorizontal: spacing.md,
     marginTop: spacing.sm,
     borderRadius: 12,
