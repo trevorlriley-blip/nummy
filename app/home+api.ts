@@ -1,4 +1,4 @@
-const BASE = 'https://nummai.com';
+const BASE = 'https://www.nummyai.com';
 
 export async function GET() {
   const html = `<!DOCTYPE html>
