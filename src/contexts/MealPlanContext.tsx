@@ -33,6 +33,7 @@ interface MealPlanContextValue {
   discardDraftPlan: () => void;
   replaceDraftMeal: (plannedMealId: string, newRecipeId: string) => void;
   setDraftPlan: (plan: WeeklyMealPlan) => void;
+  deletePlan: (planId: string) => void;
 }
 
 const MealPlanContext = createContext<MealPlanContextValue | undefined>(undefined);
@@ -174,7 +175,7 @@ function recalcPlanTotals(plan: WeeklyMealPlan): WeeklyMealPlan {
 // ---------------------------------------------------------------------------
 
 export function MealPlanProvider({ children }: { children: React.ReactNode }) {
-  const { addRecipes } = useRecipes();
+  const { addRecipes, recipes: contextRecipes } = useRecipes();
   const [plans, setPlans] = useState<WeeklyMealPlan[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -252,12 +253,16 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
     [rejectionHistory]
   );
 
-  // Accept the draft plan — commit to plans array and merge rejections
+  // Accept the draft plan — replace any existing plan for the same week, sort chronologically
   const acceptDraftPlan = useCallback(() => {
     if (!draftPlan) return;
     setPlans((prev) => {
-      const newPlans = [...prev, draftPlan];
-      setSelectedIndex(newPlans.length - 1);
+      const filtered = prev.filter((p) => p.weekStartDate !== draftPlan.weekStartDate);
+      const newPlans = [...filtered, draftPlan].sort((a, b) =>
+        a.weekStartDate.localeCompare(b.weekStartDate)
+      );
+      const newIndex = newPlans.findIndex((p) => p.id === draftPlan.id);
+      setSelectedIndex(newIndex >= 0 ? newIndex : newPlans.length - 1);
       return newPlans;
     });
     if (draftRejections.length > 0) {
@@ -266,6 +271,16 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
     setDraftPlan(null);
     setDraftRejections([]);
   }, [draftPlan, draftRejections]);
+
+  const deletePlan = useCallback((planId: string) => {
+    setPlans((prev) => {
+      const idx = prev.findIndex((p) => p.id === planId);
+      if (idx === -1) return prev;
+      const newPlans = prev.filter((p) => p.id !== planId);
+      setSelectedIndex((si) => Math.min(si, Math.max(0, newPlans.length - 1)));
+      return newPlans;
+    });
+  }, []);
 
   // Discard the draft plan without saving
   const discardDraftPlan = useCallback(() => {
@@ -283,7 +298,7 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
   const replaceDraftMeal = useCallback(
     (plannedMealId: string, newRecipeId: string) => {
       if (!draftPlan) return;
-      const newRecipe = sampleRecipes.find((r) => r.id === newRecipeId);
+      const newRecipe = contextRecipes.find((r) => r.id === newRecipeId) ?? sampleRecipes.find((r) => r.id === newRecipeId);
       if (!newRecipe) return;
 
       // Find the meal being replaced to record the rejection
@@ -321,7 +336,7 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
   );
 
   const swapMeal = useCallback((plannedMealId: string, newRecipeId: string) => {
-    const newRecipe = sampleRecipes.find((r) => r.id === newRecipeId);
+    const newRecipe = contextRecipes.find((r) => r.id === newRecipeId) ?? sampleRecipes.find((r) => r.id === newRecipeId);
     if (!newRecipe) return;
     setPlans((prev) =>
       prev.map((plan, i) => {
@@ -399,6 +414,7 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
         discardDraftPlan,
         replaceDraftMeal,
         setDraftPlan: setDraftPlanFromAgent,
+        deletePlan,
       }}
     >
       {children}

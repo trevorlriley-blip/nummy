@@ -264,11 +264,13 @@ function handleCreateMealPlan(
       });
     }
 
-    days.push({
-      date: dayInput.date,
-      dayOfWeek: dayInput.dayOfWeek,
-      meals,
-    });
+    if (meals.length > 0) {
+      days.push({
+        date: dayInput.date,
+        dayOfWeek: dayInput.dayOfWeek,
+        meals,
+      });
+    }
   }
 
   const sortedDates = days.map((d) => d.date).sort();
@@ -336,28 +338,69 @@ export async function POST(request: Request): Promise<Response> {
         : (DAY_NAMES_LOWER.filter((d) => msgLower.includes(d)).length || 3);
       const totalMealsNeeded = daysCount * mealsToInclude.length;
 
-      // 1. Pre-search Spoonacular in parallel (no Claude needed for this step)
-      const wizardSearchParams = buildWizardSearches(wizardMessage, body.context.preferences);
-      await Promise.all(
-        wizardSearchParams.map(async (params) => {
-          const raw = await searchSpoonacular(params);
-          raw.map(mapSpoonacularRecipe).forEach((r) => store.add(r));
-        })
-      );
+      const blend = body.context.myRecipeBlend ?? 0;
+      const customRecipes = body.customRecipes ?? [];
+      const hasFamiliar = customRecipes.length > 0 && blend > 0;
 
-      // 2. Build first-round message — embed pre-searched recipes so Haiku knows the IDs
-      const preSearched = store.getAll();
-      const recipeListText = preSearched
-        .map((r) => `[${r.id}] ${r.title} | ${r.mealTypes.join('/')} | ${r.cuisineType} | ${r.totalTimeMinutes > 0 ? `~${r.totalTimeMinutes}min` : 'time varies'}`)
-        .join('\n');
+      // How many slots the familiar recipes can actually cover (no repeats)
+      const familiarSlotsRequested = Math.round((blend / 100) * totalMealsNeeded);
+      const actualFamiliarSlots = hasFamiliar
+        ? Math.min(customRecipes.length, familiarSlotsRequested)
+        : 0;
+      const remainingSlots = totalMealsNeeded - actualFamiliarSlots;
 
-      const hasPreSearched = preSearched.length > 0;
-      const wizardFirstMessage = hasPreSearched
-        ? `${wizardMessage}\n\nPRE-SEARCHED RECIPES — use these exact IDs in create_meal_plan (supplement with generate_recipe if needed):\n${recipeListText}`
-        : wizardMessage;
-      const wizardSystem = hasPreSearched
-        ? systemPrompt + '\n\nWIZARD MODE: Recipes are pre-loaded above. Select from them and call create_meal_plan with the exact IDs. Use generate_recipe only for meal types not covered. Do NOT call search_recipes.'
-        : systemPrompt + `\n\nWIZARD MODE: Call generate_recipe exactly ${totalMealsNeeded} times — ONCE for EACH meal slot (${daysCount} days × ${mealsToInclude.length} meal types: ${mealsToInclude.join(', ')}). You MUST make ALL ${totalMealsNeeded} generate_recipe calls covering every meal type for every day before the meal plan is built. Do NOT call search_recipes.`;
+      // 1. Pre-search Spoonacular when there are slots left to fill with new recipes
+      const shouldSearch = remainingSlots > 0;
+      if (shouldSearch) {
+        const wizardSearchParams = buildWizardSearches(wizardMessage, body.context.preferences);
+        await Promise.all(
+          wizardSearchParams.map(async (params) => {
+            const raw = await searchSpoonacular(params);
+            raw.map(mapSpoonacularRecipe).forEach((r) => store.add(r));
+          })
+        );
+      }
+
+      // 2. Build first-round message — label custom vs searched recipes separately
+      const customRecipeIds = new Set(customRecipes.map((r) => r.id));
+      const allStoreRecipes = store.getAll();
+      const searchedRecipes = allStoreRecipes.filter((r) => !customRecipeIds.has(r.id));
+
+      const formatRecipe = (r: Recipe) =>
+        `[${r.id}] ${r.title} | ${r.mealTypes.join('/')} | ${r.cuisineType} | ${r.totalTimeMinutes > 0 ? `~${r.totalTimeMinutes}min` : 'time varies'}`;
+
+      let wizardFirstMessage = wizardMessage;
+
+      if (hasFamiliar) {
+        const customLines = customRecipes.map(formatRecipe).join('\n');
+        const coverageNote = actualFamiliarSlots < familiarSlotsRequested
+          ? ` (only ${customRecipes.length} saved recipes available — use each at most once, then fill the remaining ${remainingSlots} slots from additional options)`
+          : ` — fill ${actualFamiliarSlots} of ${totalMealsNeeded} meal slots with these`;
+        wizardFirstMessage += `\n\nSAVED RECIPES (USE FIRST — familiar, reference by ID in create_meal_plan)${coverageNote}:\n${customLines}`;
+      }
+
+      if (searchedRecipes.length > 0) {
+        const searchedLines = searchedRecipes.map(formatRecipe).join('\n');
+        const label = hasFamiliar ? `ADDITIONAL OPTIONS (use for remaining ${remainingSlots} slot${remainingSlots === 1 ? '' : 's'} — no repeats)` : 'PRE-SEARCHED RECIPES — use these exact IDs in create_meal_plan (supplement with generate_recipe if needed)';
+        wizardFirstMessage += `\n\n${label}:\n${searchedLines}`;
+      }
+
+      const hasPreSearched = allStoreRecipes.length > 0;
+
+      let wizardSystemSuffix: string;
+      if (hasPreSearched) {
+        const blendNote = hasFamiliar && blend === 100 && actualFamiliarSlots >= totalMealsNeeded
+          ? ' Prioritize SAVED RECIPES above all others — use them for every slot. Only use generate_recipe if no saved recipe fits a slot.'
+          : hasFamiliar && blend === 100
+          ? ` Use every SAVED RECIPE exactly once (no repeats). Fill the remaining ${remainingSlots} slot${remainingSlots === 1 ? '' : 's'} from ADDITIONAL OPTIONS. Do not repeat any recipe.`
+          : hasFamiliar
+          ? ` Honor the blend: prefer SAVED RECIPES for the familiar slots, use ADDITIONAL OPTIONS for the rest. Do not repeat any recipe.`
+          : '';
+        wizardSystemSuffix = `\n\nWIZARD MODE: Recipes are pre-loaded above. Select from them and call create_meal_plan with the exact IDs. Use generate_recipe only for meal types not covered. Do NOT call search_recipes.${blendNote}`;
+      } else {
+        wizardSystemSuffix = `\n\nWIZARD MODE: Call generate_recipe exactly ${totalMealsNeeded} times — ONCE for EACH meal slot (${daysCount} days × ${mealsToInclude.length} meal types: ${mealsToInclude.join(', ')}). You MUST make ALL ${totalMealsNeeded} generate_recipe calls covering every meal type for every day before the meal plan is built. Do NOT call search_recipes.`;
+      }
+      const wizardSystem = systemPrompt + wizardSystemSuffix;
 
       // 3. Two-round Haiku loop with forced tool_choice — no ambiguity.
       //    Round 0 (pre-searched): forced create_meal_plan → done in 1 call.
