@@ -22,11 +22,11 @@ import { formatWeekRange } from '../../../src/utils/formatters';
 import { spacing, borderRadius } from '../../../src/theme/spacing';
 
 const MEAL_CONFIG: { type: MealType; label: string; icon: string }[] = [
-  { type: 'breakfast', label: 'Breakfast', icon: 'weather-sunny' },
-  { type: 'lunch', label: 'Lunch', icon: 'white-balance-sunny' },
-  { type: 'dinner', label: 'Dinner', icon: 'weather-night' },
+  { type: 'breakfast', label: 'Breakfast', icon: 'coffee' },
+  { type: 'lunch', label: 'Lunch', icon: 'food' },
+  { type: 'dinner', label: 'Dinner', icon: 'silverware-fork-knife' },
   { type: 'snack', label: 'Snack', icon: 'cookie' },
-  { type: 'dessert', label: 'Dessert', icon: 'cupcake' },
+  { type: 'dessert', label: 'Dessert', icon: 'ice-cream' },
 ];
 
 function formatTime12(time: TimeOfDay): string {

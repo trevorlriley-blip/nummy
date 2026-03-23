@@ -74,7 +74,7 @@ export default function PreviewScreen() {
       const aMatch = a.mealTypes.includes(mealType) ? 0 : 1;
       const bMatch = b.mealTypes.includes(mealType) ? 0 : 1;
       return aMatch - bMatch;
-    });
+    }).slice(0, 3);
   }, [replacingMeal, draftPlan, user.preferences, getCompatibleRecipes]);
 
   if (!draftPlan) return null;

@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text, FAB, ActivityIndicator } from 'react-native-paper';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Text, FAB, ActivityIndicator, Menu, IconButton, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { isToday as checkIsToday, parseISO } from 'date-fns';
@@ -16,8 +16,11 @@ export default function MealPlanScreen() {
   const theme = useAppTheme();
   const router = useRouter();
   const { user } = useUser();
-  const { currentPlan, isGenerating, goToPreviousWeek, goToNextWeek, canGoBack, canGoForward, draftPlan } = useMealPlan();
+  const { currentPlan, isGenerating, goToPreviousWeek, goToNextWeek, canGoBack, canGoForward, deletePlan } = useMealPlan();
   const { hasFeedback } = useFeedback();
+
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [deleteDialogVisible, setDeleteDialogVisible] = useState(false);
 
   const feedbackStatusMap = useMemo(() => {
     if (!currentPlan) return {};
@@ -29,13 +32,6 @@ export default function MealPlanScreen() {
     }
     return map;
   }, [currentPlan, hasFeedback]);
-
-  // Navigate to preview when a draft plan is ready
-  useEffect(() => {
-    if (draftPlan && !isGenerating) {
-      router.push('/preview');
-    }
-  }, [draftPlan, isGenerating]);
 
   const handleMealPress = useCallback(
     (mealId: string) => {
@@ -62,12 +58,73 @@ export default function MealPlanScreen() {
     router.push('/wizard');
   }, [router]);
 
+  const handleDeletePlan = useCallback(() => {
+    if (!currentPlan) return;
+    deletePlan(currentPlan.id);
+    setDeleteDialogVisible(false);
+    setMenuVisible(false);
+  }, [currentPlan, deletePlan]);
+
+  const handleRegenerate = useCallback(() => {
+    setMenuVisible(false);
+    router.push('/wizard');
+  }, [router]);
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]} edges={['top']}>
+      <Modal
+        visible={deleteDialogVisible}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        onRequestClose={() => setDeleteDialogVisible(false)}
+      >
+        <Pressable style={styles.modalBackdrop} onPress={() => setDeleteDialogVisible(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: theme.colors.surface }]}>
+            <Text variant="headlineSmall" style={{ color: theme.colors.onSurface, marginBottom: 8 }}>
+              Delete this plan?
+            </Text>
+            <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, marginBottom: 24 }}>
+              This will permanently remove the meal plan and its grocery list.
+            </Text>
+            <View style={styles.modalActions}>
+              <Button onPress={() => setDeleteDialogVisible(false)}>Cancel</Button>
+              <Button textColor={theme.colors.error} onPress={handleDeletePlan}>Delete</Button>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       <View style={styles.header}>
         <Text variant="headlineMedium" style={{ color: theme.colors.onBackground, fontWeight: '700' }}>
           Meal Plan
         </Text>
+        {currentPlan && (
+          <Menu
+            visible={menuVisible}
+            onDismiss={() => setMenuVisible(false)}
+            anchor={
+              <IconButton
+                icon="dots-vertical"
+                size={24}
+                onPress={() => setMenuVisible(true)}
+                iconColor={theme.colors.onBackground}
+              />
+            }
+          >
+            <Menu.Item
+              leadingIcon="refresh"
+              onPress={handleRegenerate}
+              title="Regenerate plan"
+            />
+            <Menu.Item
+              leadingIcon="trash-can-outline"
+              onPress={() => { setMenuVisible(false); setDeleteDialogVisible(true); }}
+              title="Delete plan"
+              titleStyle={{ color: theme.colors.error }}
+            />
+          </Menu>
+        )}
       </View>
 
       {isGenerating ? (
@@ -126,9 +183,13 @@ export default function MealPlanScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
+    paddingLeft: 20,
+    paddingRight: 4,
     paddingTop: 8,
     paddingBottom: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   scrollView: { flex: 1 },
   scrollContent: { paddingTop: 8, paddingBottom: 16 },
@@ -148,5 +209,22 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 16,
     borderRadius: 28,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    borderRadius: 28,
+    padding: 24,
+    width: '100%',
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
 });

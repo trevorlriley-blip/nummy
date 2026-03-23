@@ -9,6 +9,24 @@ import { useRecipes } from '../../src/contexts/RecipeContext';
 import { useUser } from '../../src/contexts/UserContext';
 import { useFeedback } from '../../src/contexts/FeedbackContext';
 import { formatTime } from '../../src/utils/formatters';
+import type { CuisineType } from '../../src/types/recipe';
+
+const CUISINE_ICONS: Record<CuisineType, string> = {
+  american: 'grill',
+  italian: 'pizza',
+  mexican: 'taco',
+  asian: 'noodles',
+  indian: 'pot-steam',
+  mediterranean: 'fish',
+  'middle-eastern': 'shaker-outline',
+  french: 'baguette',
+  thai: 'chili-hot',
+  japanese: 'rice',
+  chinese: 'rice-ball',
+  korean: 'pot-mix',
+  greek: 'leaf',
+  other: 'silverware-fork-knife',
+};
 
 export default function RecipeDetailScreen() {
   const { id, plannedMealId } = useLocalSearchParams<{ id: string; plannedMealId?: string }>();
@@ -52,11 +70,15 @@ export default function RecipeDetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Hero placeholder */}
-        <View style={[styles.heroPlaceholder, { backgroundColor: theme.colors.primaryContainer }]}>
-          <MaterialCommunityIcons name="food-variant" size={80} color={theme.colors.primary} />
-          <Text variant="bodySmall" style={{ color: theme.colors.onPrimaryContainer, marginTop: 8 }}>
-            {recipe.cuisineType.charAt(0).toUpperCase() + recipe.cuisineType.slice(1)} Cuisine
+        {/* Cuisine header band */}
+        <View style={[styles.cuisineBand, { backgroundColor: theme.colors.primaryContainer }]}>
+          <MaterialCommunityIcons
+            name={(CUISINE_ICONS[recipe.cuisineType] ?? 'silverware-fork-knife') as any}
+            size={32}
+            color={theme.colors.primary}
+          />
+          <Text variant="labelLarge" style={{ color: theme.colors.primary, marginLeft: 10, fontWeight: '600', letterSpacing: 0.3 }}>
+            {recipe.cuisineType.charAt(0).toUpperCase() + recipe.cuisineType.slice(1).replace('-', ' ')} Cuisine
           </Text>
         </View>
 
@@ -218,10 +240,11 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   scrollContent: { paddingBottom: 20 },
-  heroPlaceholder: {
-    height: 200,
-    justifyContent: 'center',
+  cuisineBand: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
   metaBar: {
     flexDirection: 'row',

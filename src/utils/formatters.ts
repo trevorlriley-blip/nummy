@@ -24,9 +24,9 @@ export function formatDayFull(dateStr: string): string {
 }
 
 export function formatWeekRange(startDate: string): string {
-  const start = parseISO(startDate);
-  const end = addDays(start, 6);
-  return `${format(start, 'MMM d')} - ${format(end, 'MMM d')}`;
+  const monday = startOfWeek(parseISO(startDate), { weekStartsOn: 1 });
+  const sunday = addDays(monday, 6);
+  return `${format(monday, 'MMM d')} - ${format(sunday, 'MMM d')}`;
 }
 
 export function getWeekDates(startDate: string): string[] {

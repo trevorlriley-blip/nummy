@@ -2,12 +2,20 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { GroceryList } from '../types/groceryList';
 import { StoreSection } from '../types/recipe';
 import { sampleGroceryList } from '../data/groceryList';
-import { generateGroceryList } from '../utils/groceryListGenerator';
+import { generateGroceryList, applyConsolidation } from '../utils/groceryListGenerator';
 import { useMealPlan } from './MealPlanContext';
 import { STORAGE_KEYS, saveToStorage, loadFromStorage } from '../utils/storage';
 
+interface MergeGroup {
+  ids: string[];
+  name: string;
+  quantity: number;
+  unit: string;
+}
+
 interface GroceryListContextValue {
   groceryList: GroceryList | null;
+  isConsolidating: boolean;
   toggleItemChecked: (itemId: string) => void;
   checkAllInSection: (category: StoreSection) => void;
   uncheckAll: () => void;
@@ -24,6 +32,7 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
   const [groceryLists, setGroceryLists] = useState<Record<string, GroceryList>>({
     [sampleGroceryList.mealPlanId]: sampleGroceryList,
   });
+  const [isConsolidating, setIsConsolidating] = useState(false);
   const isLoaded = useRef(false);
 
   // Load grocery lists from storage
@@ -43,12 +52,32 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
     }
   }, [groceryLists]);
 
-  // Auto-generate grocery list when a new plan is selected that doesn't have one yet
+  // Auto-generate and consolidate grocery list when a new plan is selected
   useEffect(() => {
-    if (currentPlan && !groceryLists[currentPlan.id]) {
-      const newList = generateGroceryList(currentPlan);
-      setGroceryLists((prev) => ({ ...prev, [currentPlan.id]: newList }));
-    }
+    if (!currentPlan || groceryLists[currentPlan.id]) return;
+
+    const basicList = generateGroceryList(currentPlan);
+    setGroceryLists((prev) => ({ ...prev, [currentPlan.id]: basicList }));
+
+    const allItems = basicList.sections.flatMap((s) =>
+      s.items.map((i) => ({ id: i.id, name: i.name, quantity: i.quantity, unit: i.unit, category: i.category }))
+    );
+
+    setIsConsolidating(true);
+    fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? ''}/api/consolidate-grocery`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items: allItems }),
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
+      .then((data: { groups: MergeGroup[] }) => {
+        if (data.groups?.length) {
+          const consolidated = applyConsolidation(basicList, data.groups);
+          setGroceryLists((prev) => ({ ...prev, [basicList.mealPlanId]: consolidated }));
+        }
+      })
+      .catch(() => {/* keep basic list on failure */})
+      .finally(() => setIsConsolidating(false));
   }, [currentPlan?.id]);
 
   const groceryList = currentPlan ? (groceryLists[currentPlan.id] ?? null) : null;
@@ -129,6 +158,7 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
     <GroceryListContext.Provider
       value={{
         groceryList,
+        isConsolidating,
         toggleItemChecked,
         checkAllInSection,
         uncheckAll,

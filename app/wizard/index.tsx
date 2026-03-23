@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { Alert, View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Text, Button, IconButton, Dialog, Portal } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format, addDays, startOfWeek, addWeeks } from 'date-fns';
@@ -38,8 +38,9 @@ const WEEK_OPTIONS = getWeekOptions();
 export default function WizardScreen() {
   const theme = useAppTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { generateFromWizard, isGenerating, generationError } = useAgent();
-  const { plans } = useMealPlan();
+  const { plans, deletePlan } = useMealPlan();
   const { user } = useUser();
   const { myRecipes } = useMyRecipes();
 
@@ -101,20 +102,33 @@ export default function WizardScreen() {
     }
   }, [existingPlanForWeek, doGenerate]);
 
+  const handleDeletePlanForWeek = useCallback((weekStart: string) => {
+    const plan = plans.find((p) => p.weekStartDate === weekStart);
+    if (!plan) return;
+    Alert.alert(
+      'Delete existing plan?',
+      'This will remove the plan for this week so you can create a new one.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => deletePlan(plan.id) },
+      ]
+    );
+  }, [plans, deletePlan]);
+
   const handleRetry = useCallback(() => doGenerate(), [doGenerate]);
   const handleClose = useCallback(() => router.back(), [router]);
 
   if (isGenerating) {
     return (
-      <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <GeneratingAnimation />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (generationError) {
     return (
-      <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.header}>
           <IconButton icon="close" onPress={handleClose} />
           <Text variant="titleMedium" style={{ fontWeight: '600' }}>New Plan</Text>
@@ -128,12 +142,12 @@ export default function WizardScreen() {
           <Button mode="contained" onPress={handleRetry} style={styles.retryButton}>Try Again</Button>
           <Button mode="text" onPress={handleClose}>Go Back</Button>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <Portal>
         <Dialog visible={showConflictDialog} onDismiss={() => setShowConflictDialog(false)}>
           <Dialog.Title>Replace existing plan?</Dialog.Title>
@@ -196,9 +210,16 @@ export default function WizardScreen() {
                   </View>
                   <View style={styles.weekOptionRight}>
                     {hasConflict && (
-                      <Text variant="labelSmall" style={{ color: theme.colors.error, marginRight: spacing.sm }}>
-                        Has plan
-                      </Text>
+                      <Pressable
+                        onPress={() => handleDeletePlanForWeek(opt.weekStartDate)}
+                        style={styles.deleteBadge}
+                        hitSlop={8}
+                      >
+                        <MaterialCommunityIcons name="trash-can-outline" size={14} color={theme.colors.error} />
+                        <Text variant="labelSmall" style={{ color: theme.colors.error, marginLeft: 3 }}>
+                          Delete plan
+                        </Text>
+                      </Pressable>
                     )}
                     {selected && (
                       <MaterialCommunityIcons name="check-circle" size={20} color={theme.colors.primary} />
@@ -263,7 +284,7 @@ export default function WizardScreen() {
           </>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -324,4 +345,9 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   retryButton: { marginBottom: spacing.sm },
+  deleteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+  },
 });

@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Image } from 'react-native';
 import { Text, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAppTheme } from '../../src/hooks/useAppTheme';
 import { useOnboarding } from '../../src/contexts/OnboardingContext';
@@ -21,14 +20,9 @@ export default function WelcomeScreen() {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <View style={[styles.iconCircle, { backgroundColor: theme.colors.primaryContainer }]}>
-            <MaterialCommunityIcons name="food-variant" size={80} color={theme.colors.primary} />
-          </View>
+          <Image source={require('../../assets/icon.png')} style={styles.logo} />
         </View>
 
-        <Text variant="headlineLarge" style={[styles.title, { color: theme.colors.onBackground }]}>
-          Nummy
-        </Text>
         <Text variant="titleMedium" style={[styles.subtitle, { color: theme.colors.primary }]}>
           Eat well, stress less
         </Text>
@@ -40,12 +34,12 @@ export default function WelcomeScreen() {
 
         <View style={styles.features}>
           {[
-            { icon: 'calendar-check', text: 'Weekly meal plans' },
-            { icon: 'cart-outline', text: 'Smart grocery lists' },
-            { icon: 'silverware-fork-knife', text: 'Curated recipes' },
+            { emoji: '🗓️', text: 'Weekly meal plans' },
+            { emoji: '🛒', text: 'Smart grocery lists' },
+            { emoji: '🍽️', text: 'Curated recipes' },
           ].map((item) => (
             <View key={item.text} style={styles.featureRow}>
-              <MaterialCommunityIcons name={item.icon as any} size={24} color={theme.colors.primary} />
+              <Text style={{ fontSize: 22 }}>{item.emoji}</Text>
               <Text variant="bodyLarge" style={{ color: theme.colors.onBackground, marginLeft: 12 }}>
                 {item.text}
               </Text>
@@ -83,16 +77,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
-  iconCircle: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    textAlign: 'center',
-    fontWeight: '800',
+  logo: {
+    width: 180,
+    height: 180,
+    borderRadius: 40,
   },
   subtitle: {
     textAlign: 'center',

@@ -19,11 +19,11 @@ import { spacing } from '../../../src/theme/spacing';
 import { Recipe } from '../../../src/types/recipe';
 
 const MEAL_TYPE_ICONS: Record<string, string> = {
-  breakfast: 'weather-sunny',
-  lunch: 'silverware',
-  dinner: 'moon-waning-crescent',
-  snack: 'food-apple',
-  dessert: 'cupcake',
+  breakfast: 'coffee',
+  lunch: 'food',
+  dinner: 'silverware-fork-knife',
+  snack: 'cookie',
+  dessert: 'ice-cream',
 };
 
 export default function MyRecipesScreen() {
@@ -104,8 +104,8 @@ export default function MyRecipesScreen() {
                     key={t}
                     mode="flat"
                     compact
-                    style={{ backgroundColor: theme.colors.tertiaryContainer, height: 22 }}
-                    textStyle={{ fontSize: 10, color: theme.colors.onTertiaryContainer }}
+                    style={{ backgroundColor: theme.colors.tertiaryContainer }}
+                    textStyle={{ fontSize: 11, color: theme.colors.onTertiaryContainer }}
                   >
                     {t.charAt(0).toUpperCase() + t.slice(1)}
                   </Chip>
@@ -113,8 +113,8 @@ export default function MyRecipesScreen() {
                 <Chip
                   mode="flat"
                   compact
-                  style={{ backgroundColor: theme.colors.secondaryContainer, height: 22 }}
-                  textStyle={{ fontSize: 10, color: theme.colors.onSecondaryContainer }}
+                  style={{ backgroundColor: theme.colors.secondaryContainer }}
+                  textStyle={{ fontSize: 11, color: theme.colors.onSecondaryContainer }}
                 >
                   {cuisineLabel(item.cuisineType)}
                 </Chip>
@@ -186,8 +186,8 @@ export default function MyRecipesScreen() {
                     key={t}
                     mode="flat"
                     compact
-                    style={{ backgroundColor: theme.colors.tertiaryContainer, height: 22 }}
-                    textStyle={{ fontSize: 10, color: theme.colors.onTertiaryContainer }}
+                    style={{ backgroundColor: theme.colors.tertiaryContainer }}
+                    textStyle={{ fontSize: 11, color: theme.colors.onTertiaryContainer }}
                   >
                     {t.charAt(0).toUpperCase() + t.slice(1)}
                   </Chip>
@@ -195,8 +195,8 @@ export default function MyRecipesScreen() {
                 <Chip
                   mode="flat"
                   compact
-                  style={{ backgroundColor: theme.colors.secondaryContainer, height: 22 }}
-                  textStyle={{ fontSize: 10, color: theme.colors.onSecondaryContainer }}
+                  style={{ backgroundColor: theme.colors.secondaryContainer }}
+                  textStyle={{ fontSize: 11, color: theme.colors.onSecondaryContainer }}
                 >
                   {cuisineLabel(item.cuisineType)}
                 </Chip>

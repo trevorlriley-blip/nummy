@@ -8,11 +8,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Text,
-  Checkbox,
   ProgressBar,
   Button,
   IconButton,
   Divider,
+  ActivityIndicator,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -29,6 +29,7 @@ export default function GroceryListScreen() {
   const router = useRouter();
   const {
     groceryList,
+    isConsolidating,
     toggleItemChecked,
     uncheckAll,
     checkedCount,
@@ -36,12 +37,12 @@ export default function GroceryListScreen() {
   } = useGroceryList();
   const { currentPlan, goToPreviousWeek, goToNextWeek, canGoBack, canGoForward } = useMealPlan();
 
-  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set()
   );
 
   const toggleSection = useCallback((category: string) => {
-    setCollapsedSections((prev) => {
+    setExpandedSections((prev) => {
       const next = new Set(prev);
       if (next.has(category)) {
         next.delete(category);
@@ -113,19 +114,9 @@ export default function GroceryListScreen() {
 
         {/* Summary Bar */}
         <View style={[styles.summaryBar, { backgroundColor: theme.colors.primaryContainer }]}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text variant="labelSmall" style={{ color: theme.colors.onPrimaryContainer }}>
-                Items
-              </Text>
-              <Text
-                variant="titleMedium"
-                style={{ color: theme.colors.onPrimaryContainer, fontWeight: '700' }}
-              >
-                {checkedCount} / {totalCount}
-              </Text>
-            </View>
-          </View>
+          <Text variant="labelMedium" style={{ color: theme.colors.onPrimaryContainer }}>
+            {checkedCount} / {totalCount} items
+          </Text>
           <ProgressBar
             progress={progress}
             color={theme.colors.primary}
@@ -133,6 +124,16 @@ export default function GroceryListScreen() {
           />
         </View>
       </View>
+
+      {/* AI consolidation loading banner */}
+      {isConsolidating && (
+        <View style={[styles.consolidatingBanner, { backgroundColor: theme.colors.secondaryContainer }]}>
+          <ActivityIndicator size={14} color={theme.colors.onSecondaryContainer} />
+          <Text variant="labelMedium" style={{ color: theme.colors.onSecondaryContainer, marginLeft: 8 }}>
+            Consolidating ingredients…
+          </Text>
+        </View>
+      )}
 
       {/* Sections */}
       <ScrollView
@@ -144,7 +145,7 @@ export default function GroceryListScreen() {
           <SectionCard
             key={section.category}
             section={section}
-            collapsed={collapsedSections.has(section.category)}
+            collapsed={!expandedSections.has(section.category)}
             onToggleCollapse={() => toggleSection(section.category)}
             onToggleItem={toggleItemChecked}
             theme={theme}
@@ -265,11 +266,10 @@ function GroceryItemRow({ item, onToggle, isLast, theme }: GroceryItemRowProps) 
   return (
     <Pressable onPress={onToggle} style={styles.itemRow}>
       <View style={styles.itemLeft}>
-        <Checkbox
-          status={item.isChecked ? 'checked' : 'unchecked'}
-          onPress={onToggle}
-          color={theme.colors.primary}
-          uncheckedColor={theme.colors.outline}
+        <MaterialCommunityIcons
+          name={item.isChecked ? 'checkbox-marked' : 'checkbox-blank-outline'}
+          size={22}
+          color={item.isChecked ? theme.colors.primary : theme.colors.outline}
         />
         <View style={styles.itemDetails}>
           <Text
@@ -314,28 +314,22 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   summaryBar: {
-    borderRadius: 12,
-    padding: spacing.md,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  summaryDivider: {
-    width: 1,
-    height: 32,
-    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 10,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    paddingBottom: spacing.sm,
+    gap: 6,
   },
   progressBar: {
-    height: 6,
-    borderRadius: 3,
+    height: 7,
+    borderRadius: 4,
     backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  consolidatingBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
   },
   scrollContent: {
     flex: 1,

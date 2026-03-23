@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Text, TextInput, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useAppTheme } from '../../src/hooks/useAppTheme';
 import { useAuth } from '../../src/contexts/AuthContext';
@@ -39,12 +38,7 @@ export default function LoginScreen() {
       >
         <View style={styles.content}>
           <View style={styles.header}>
-            <View style={[styles.iconCircle, { backgroundColor: theme.colors.primaryContainer }]}>
-              <MaterialCommunityIcons name="food-variant" size={48} color={theme.colors.primary} />
-            </View>
-            <Text variant="headlineLarge" style={[styles.title, { color: theme.colors.onBackground }]}>
-              Nummy
-            </Text>
+            <Image source={require('../../assets/icon.png')} style={styles.logo} />
             <Text variant="bodyLarge" style={{ color: theme.colors.onSurfaceVariant }}>
               Sign in to your account
             </Text>
@@ -124,12 +118,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
-  iconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 180,
+    height: 180,
+    borderRadius: 40,
     marginBottom: spacing.md,
   },
   title: {

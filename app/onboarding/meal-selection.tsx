@@ -120,7 +120,7 @@ export default function MealSelectionScreen() {
           </Surface>
 
           <Surface style={[styles.toggleRow, { backgroundColor: theme.colors.surface }]} elevation={0}>
-            <MaterialCommunityIcons name="cupcake" size={24} color={theme.colors.tertiary} />
+            <MaterialCommunityIcons name="ice-cream" size={24} color={theme.colors.tertiary} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text variant="bodyLarge" style={{ color: theme.colors.onSurface }}>Desserts</Text>
               <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
