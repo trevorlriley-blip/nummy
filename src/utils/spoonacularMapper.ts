@@ -121,7 +121,35 @@ const CUISINE_MAP: Record<string, CuisineType> = {
   chinese: 'chinese',
   korean: 'korean',
   greek: 'greek',
+  spanish: 'mediterranean',
+  vietnamese: 'asian',
+  'latin american': 'mexican',
+  cajun: 'american',
+  southern: 'american',
+  british: 'american',
+  european: 'french',
 };
+
+const TITLE_CUISINE_KEYWORDS: Array<{ keywords: string[]; cuisine: CuisineType }> = [
+  { keywords: ['taco', 'burrito', 'enchilada', 'quesadilla', 'fajita', 'tamale', 'salsa', 'guacamole', 'carnitas', 'chorizo', 'tortilla'], cuisine: 'mexican' },
+  { keywords: ['pasta', 'risotto', 'pizza', 'lasagna', 'lasagne', 'gnocchi', 'pesto', 'carbonara', 'parmesan', 'bolognese', 'bruschetta', 'tiramisu', 'ravioli', 'fettuccine', 'linguine', 'spaghetti', 'penne', 'marsala'], cuisine: 'italian' },
+  { keywords: ['curry', 'tikka', 'masala', 'dal', 'naan', 'paneer', 'biryani', 'samosa', 'tandoori', 'chutney', 'korma', 'vindaloo'], cuisine: 'indian' },
+  { keywords: ['stir fry', 'stir-fry', 'fried rice', 'lo mein', 'chow mein', 'dim sum', 'dumpling', 'wonton', 'kung pao', 'szechuan', 'sichuan', 'hoisin', 'sesame noodle'], cuisine: 'chinese' },
+  { keywords: ['sushi', 'ramen', 'miso', 'teriyaki', 'tempura', 'udon', 'edamame', 'tonkatsu', 'yakitori', 'bento'], cuisine: 'japanese' },
+  { keywords: ['pad thai', 'tom yum', 'green curry', 'red curry', 'thai basil', 'lemongrass', 'coconut soup'], cuisine: 'thai' },
+  { keywords: ['bibimbap', 'kimchi', 'bulgogi', 'tteok', 'gochujang', 'japchae'], cuisine: 'korean' },
+  { keywords: ['hummus', 'falafel', 'shawarma', 'kebab', 'pita', 'tahini', 'baba ganoush', 'tzatziki', 'gyro', 'moussaka'], cuisine: 'mediterranean' },
+  { keywords: ['burger', 'bbq', 'barbecue', 'mac and cheese', 'cornbread', 'biscuit gravy', 'pot roast', 'meatloaf', 'coleslaw', 'pulled pork'], cuisine: 'american' },
+  { keywords: ['croissant', 'quiche', 'ratatouille', 'crepe', 'baguette', 'bouillabaisse', 'coq au vin', 'vichyssoise'], cuisine: 'french' },
+];
+
+function inferCuisineFromTitle(title: string): CuisineType {
+  const lower = title.toLowerCase();
+  for (const { keywords, cuisine } of TITLE_CUISINE_KEYWORDS) {
+    if (keywords.some((k) => lower.includes(k))) return cuisine;
+  }
+  return 'other';
+}
 
 const MEAL_TYPE_MAP: Record<string, MealType> = {
   breakfast: 'breakfast',
@@ -223,7 +251,7 @@ export function mapSpoonacularRecipe(raw: SpoonacularRecipe): Recipe {
   const cuisines = (raw.cuisines ?? []).map((c) => c.toLowerCase());
   const cuisineType: CuisineType = cuisines
     .map((c) => CUISINE_MAP[c])
-    .find((c) => c !== undefined) ?? 'other';
+    .find((c) => c !== undefined) ?? inferCuisineFromTitle(raw.title ?? '');
 
   const dishTypes = (raw.dishTypes ?? []).map((d) => d.toLowerCase());
   const mealTypes: MealType[] = [
