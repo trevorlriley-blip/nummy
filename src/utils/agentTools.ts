@@ -94,6 +94,7 @@ export const agentTools: Anthropic.Tool[] = [
               quantity: { type: 'number', description: 'Amount needed' },
               unit: { type: 'string', description: 'Unit of measurement (cups, tbsp, tsp, oz, lbs, g, pieces, etc.)' },
               estimatedCostUSD: { type: 'number', description: 'Estimated cost in USD' },
+              category: { type: 'string', description: 'Grocery store section: produce, dairy, meat, seafood, bakery, pantry, spices, condiments, frozen, beverages, snacks, deli, or other' },
             },
             required: ['name', 'quantity', 'unit'],
           },

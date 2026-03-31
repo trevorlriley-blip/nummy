@@ -6,7 +6,7 @@ import {
   type SpoonacularRecipe,
 } from '../../../src/utils/spoonacularMapper';
 import type { AgentChatRequest, AgentResponse } from '../../../src/types/agent';
-import type { Recipe, MealType } from '../../../src/types/recipe';
+import type { Recipe, MealType, StoreSection } from '../../../src/types/recipe';
 import type { WeeklyMealPlan, PlannedMeal, DayPlan } from '../../../src/types/mealPlan';
 import type { UserPreferences } from '../../../src/types/user';
 
@@ -163,15 +163,16 @@ function handleGenerateRecipe(
   const dietaryReqs = (input.dietaryRequirements as string[]) ?? [];
 
   // Map ingredients from Claude's input
+  const validCategories: StoreSection[] = ['produce','dairy','meat','seafood','bakery','pantry','spices','condiments','frozen','beverages','snacks','deli','other'];
   const rawIngredients = (input.ingredients as Array<{
-    name: string; quantity: number; unit: string; estimatedCostUSD?: number;
+    name: string; quantity: number; unit: string; estimatedCostUSD?: number; category?: string;
   }>) ?? [];
   const ingredients = rawIngredients.map((ing, i) => ({
     id: `ing-gen-${id}-${i}`,
     name: ing.name,
     quantity: ing.quantity,
     unit: (ing.unit && !['piece', 'pieces', 'whole', 'large', 'medium', 'small'].includes(ing.unit.toLowerCase()) ? ing.unit.toLowerCase() : '') as Recipe['ingredients'][0]['unit'],
-    category: 'other' as const,
+    category: (validCategories.includes(ing.category as StoreSection) ? ing.category : 'other') as StoreSection,
     estimatedCostUSD: ing.estimatedCostUSD ?? 0.5,
   }));
 
