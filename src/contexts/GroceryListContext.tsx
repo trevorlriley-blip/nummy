@@ -6,6 +6,7 @@ import { generateGroceryList, applyConsolidation } from '../utils/groceryListGen
 import { useMealPlan } from './MealPlanContext';
 import { STORAGE_KEYS, saveToStorage, loadFromStorage } from '../utils/storage';
 import { namesMatch } from '../utils/pantryMatch';
+import { useAuth } from './AuthContext';
 
 interface MergeGroup {
   ids: string[];
@@ -35,6 +36,9 @@ const GroceryListContext = createContext<GroceryListContextValue | undefined>(un
 
 export function GroceryListProvider({ children }: { children: React.ReactNode }) {
   const { currentPlan } = useMealPlan();
+  const { session } = useAuth();
+  const tokenRef = useRef(session?.access_token);
+  tokenRef.current = session?.access_token;
   const [groceryLists, setGroceryLists] = useState<Record<string, GroceryList>>({
     [sampleGroceryList.mealPlanId]: sampleGroceryList,
   });
@@ -72,7 +76,10 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
     setIsConsolidating(true);
     fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? ''}/api/consolidate-grocery`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(tokenRef.current ? { Authorization: `Bearer ${tokenRef.current}` } : {}),
+      },
       body: JSON.stringify({ items: allItems }),
     })
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))

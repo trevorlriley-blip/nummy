@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { ChatMessage, QuickReply, AgentChatRequest, AgentResponse, AgentUserContext } from '../types/agent';
+import { useAuth } from './AuthContext';
 import { useUser } from './UserContext';
 import { useMealPlan } from './MealPlanContext';
 import { useFeedback } from './FeedbackContext';
@@ -22,6 +23,8 @@ interface AgentContextValue {
 
 const AgentContext = createContext<AgentContextValue | undefined>(undefined);
 
+const SIGN_IN_AGAIN = 'Please sign in again — your session has expired. Sign out and back in, then try again.';
+
 const DEFAULT_QUICK_REPLIES: QuickReply[] = [
   { label: 'Plan all 7 days', message: 'Plan meals for every day this week' },
   { label: 'Italian', message: "I'm craving Italian food this week" },
@@ -39,6 +42,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
   const [generationError, setGenerationError] = useState<string | null>(null);
 
   const router = useRouter();
+  const { session } = useAuth();
   const { user } = useUser();
   const { setDraftPlan, draftRejections } = useMealPlan();
   const { getFeedbackSummaries } = useFeedback();
@@ -100,10 +104,14 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? ''}/api/agent/chat`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify(chatRequest),
         });
 
+        if (response.status === 401) throw new Error(SIGN_IN_AGAIN);
         const data = (await response.json()) as AgentResponse;
 
         const assistantMessage: ChatMessage = {
@@ -136,7 +144,10 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
         const errorMessage: ChatMessage = {
           id: `msg-${Date.now()}-error`,
           role: 'assistant',
-          content: 'Sorry, I had trouble connecting. Please check your connection and try again.',
+          content:
+            error instanceof Error && error.message === SIGN_IN_AGAIN
+              ? SIGN_IN_AGAIN
+              : 'Sorry, I had trouble connecting. Please check your connection and try again.',
           timestamp: new Date().toISOString(),
         };
         setMessages((prev) => [...prev, errorMessage]);
@@ -145,7 +156,7 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
         setIsLoading(false);
       }
     },
-    [messages, buildUserContext, addRecipes, setDraftPlan, router]
+    [messages, buildUserContext, addRecipes, setDraftPlan, router, session?.access_token]
   );
 
   const generateFromWizard = useCallback(
@@ -163,10 +174,14 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
 
         const response = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? ''}/api/agent/chat`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
           body: JSON.stringify(chatRequest),
         });
 
+        if (response.status === 401) throw new Error(SIGN_IN_AGAIN);
         const data = (await response.json()) as AgentResponse;
 
         // Register extra searched recipes as swap alternatives
@@ -189,12 +204,12 @@ export function AgentProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.error('Wizard generation error:', error);
         const msg = error instanceof Error ? error.message : String(error);
-        setGenerationError(`Connection error: ${msg}`);
+        setGenerationError(msg === SIGN_IN_AGAIN ? msg : `Connection error: ${msg}`);
       } finally {
         setIsGenerating(false);
       }
     },
-    [buildUserContext, addRecipes, setDraftPlan, router]
+    [buildUserContext, addRecipes, setDraftPlan, router, session?.access_token]
   );
 
   const resetChat = useCallback(() => {

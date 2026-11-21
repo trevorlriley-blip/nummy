@@ -9,6 +9,7 @@ import type { AgentChatRequest, AgentResponse } from '../../../src/types/agent';
 import type { Recipe, MealType, StoreSection } from '../../../src/types/recipe';
 import type { WeeklyMealPlan, PlannedMeal, DayPlan } from '../../../src/types/mealPlan';
 import type { UserPreferences } from '../../../src/types/user';
+import { verifySupabaseUser } from '../../../src/utils/verifySupabaseUser';
 
 // ---------------------------------------------------------------------------
 // Spoonacular API helpers
@@ -293,6 +294,9 @@ function handleCreateMealPlan(
 
 export async function POST(request: Request): Promise<Response> {
   try {
+    const auth = await verifySupabaseUser(request);
+    if ('response' in auth) return auth.response;
+
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey || apiKey === 'your-anthropic-api-key-here') {
       return Response.json(

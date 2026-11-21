@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { verifySupabaseUser } from '../../src/utils/verifySupabaseUser';
 
 interface InputItem {
   id: string;
@@ -16,6 +17,9 @@ interface MergeGroup {
 }
 
 export async function POST(request: Request) {
+  const auth = await verifySupabaseUser(request);
+  if ('response' in auth) return auth.response;
+
   const body = (await request.json()) as { items: InputItem[] };
   const { items } = body;
 
