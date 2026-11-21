@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Recipe, MealType, CuisineType } from '../../src/types/recipe';
+import { verifySupabaseUser } from '../../src/utils/verifySupabaseUser';
 
 const SCAN_PROMPT = `You are a recipe extraction assistant. The user has photographed a recipe (from a cookbook, handwritten note, website screenshot, or similar). Extract it into structured JSON.
 
@@ -58,6 +59,9 @@ interface ScannedRecipe {
 
 export async function POST(request: Request): Promise<Response> {
   try {
+    const auth = await verifySupabaseUser(request);
+    if ('response' in auth) return auth.response;
+
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       return Response.json({ error: 'API not configured' }, { status: 500 });

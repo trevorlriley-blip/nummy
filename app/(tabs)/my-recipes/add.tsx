@@ -17,6 +17,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAppTheme } from '../../../src/hooks/useAppTheme';
 import { useMyRecipes } from '../../../src/contexts/MyRecipesContext';
 import { useUser } from '../../../src/contexts/UserContext';
+import { useAuth } from '../../../src/contexts/AuthContext';
 import { spacing } from '../../../src/theme/spacing';
 import { Recipe, MealType, CuisineType } from '../../../src/types/recipe';
 
@@ -55,6 +56,7 @@ export default function AddRecipeScreen() {
   const { recipeId } = useLocalSearchParams<{ recipeId?: string }>();
   const { myRecipes, addMyRecipe, updateMyRecipe } = useMyRecipes();
   const { user } = useUser();
+  const { session } = useAuth();
 
   const isEditing = Boolean(recipeId);
   const existing = recipeId ? myRecipes.find((r) => r.id === recipeId) : undefined;
@@ -140,9 +142,16 @@ export default function AddRecipeScreen() {
     try {
       const res = await fetch(`${process.env.EXPO_PUBLIC_API_BASE_URL ?? ''}/api/scan-recipe`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
         body: JSON.stringify({ imageBase64: base64, mimeType }),
       });
+      if (res.status === 401) {
+        Alert.alert('Please sign in again', 'Your session has expired. Sign out and back in, then try again.');
+        return;
+      }
       const data = await res.json();
       if (!res.ok || data.error) {
         Alert.alert('Scan Failed', data.error || 'Could not extract a recipe. Try a clearer photo.');
