@@ -1,3 +1,5 @@
+import type { GroceryList } from '../types/groceryList';
+
 /**
  * Name matching between pantry items, grocery items and recipe ingredients.
  * Case-insensitive, singular/plural tolerant, with a small synonym map.
@@ -68,3 +70,22 @@ export function ingredientContains(ingredientName: string, itemName: string): bo
   const item = normalizeName(itemName);
   return item.length > 0 && ing.includes(` ${item} `);
 }
+
+/** Marks every list item whose name matches a pantry name as haveIt (clearing stale flags). */
+export function markHaveIt(
+  list: GroceryList,
+  pantryNames: string[]
+): { list: GroceryList; count: number } {
+  let count = 0;
+  const sections = list.sections.map((section) => ({
+    ...section,
+    items: section.items.map((item) => {
+      const haveIt = pantryNames.some((n) => namesMatch(n, item.name));
+      if (haveIt) count++;
+      return { ...item, haveIt };
+    }),
+  }));
+  return { list: { ...list, sections }, count };
+}
+
+export const SNAPSHOT_MAX_AGE_MS = 3 * 24 * 60 * 60 * 1000;

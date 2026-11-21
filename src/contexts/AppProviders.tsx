@@ -26,15 +26,15 @@ function ThemedApp({ children }: { children: React.ReactNode }) {
               <MyRecipesProvider>
               <MealPlanProvider>
                 <CalendarProvider>
+                  <PantryProvider>
                   <GroceryListProvider>
                     <FeedbackProvider>
-                      <PantryProvider>
-                        <AgentProvider>
-                          {children}
-                        </AgentProvider>
-                      </PantryProvider>
+                      <AgentProvider>
+                        {children}
+                      </AgentProvider>
                     </FeedbackProvider>
                   </GroceryListProvider>
+                  </PantryProvider>
                 </CalendarProvider>
               </MealPlanProvider>
               </MyRecipesProvider>

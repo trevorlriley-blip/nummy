@@ -81,7 +81,7 @@ export default function AgentScreen() {
               { color: theme.colors.onBackground },
             ]}
           >
-            Plan Your Week
+            {initialMessage ? 'Use it up' : 'Plan Your Week'}
           </Text>
           <View style={styles.headerRight} />
         </View>

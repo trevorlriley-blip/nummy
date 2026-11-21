@@ -5,8 +5,10 @@ import { sampleGroceryList } from '../data/groceryList';
 import { generateGroceryList, applyConsolidation } from '../utils/groceryListGenerator';
 import { useMealPlan } from './MealPlanContext';
 import { STORAGE_KEYS, saveToStorage, loadFromStorage } from '../utils/storage';
-import { namesMatch } from '../utils/pantryMatch';
+import { markHaveIt, SNAPSHOT_MAX_AGE_MS } from '../utils/pantryMatch';
+import { logEvent } from '../utils/testLog';
 import { useAuth } from './AuthContext';
+import { usePantry } from './PantryContext';
 
 interface MergeGroup {
   ids: string[];
@@ -37,6 +39,10 @@ const GroceryListContext = createContext<GroceryListContextValue | undefined>(un
 export function GroceryListProvider({ children }: { children: React.ReactNode }) {
   const { currentPlan } = useMealPlan();
   const { session } = useAuth();
+  const { snapshot } = usePantry();
+  // Latest values for use inside async callbacks
+  const snapshotRef = useRef(snapshot);
+  snapshotRef.current = snapshot;
   const tokenRef = useRef(session?.access_token);
   tokenRef.current = session?.access_token;
   const [groceryLists, setGroceryLists] = useState<Record<string, GroceryList>>({
@@ -66,7 +72,16 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     if (!currentPlan || groceryLists[currentPlan.id]) return;
 
-    const basicList = generateGroceryList(currentPlan);
+    // A snapshot from the last 3 days is applied to every freshly generated list
+    const applyRecentSnapshot = (list: GroceryList, stage: string): GroceryList => {
+      const snap = snapshotRef.current;
+      if (!snap || Date.now() - Date.parse(snap.takenAt) > SNAPSHOT_MAX_AGE_MS) return list;
+      const { list: matched, count } = markHaveIt(list, snap.items.map((i) => i.name));
+      logEvent('list_matched', { count, auto: true, stage });
+      return matched;
+    };
+
+    const basicList = applyRecentSnapshot(generateGroceryList(currentPlan), 'generated');
     setGroceryLists((prev) => ({ ...prev, [currentPlan.id]: basicList }));
 
     const allItems = basicList.sections.flatMap((s) =>
@@ -85,7 +100,7 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
       .then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
       .then((data: { groups: MergeGroup[] }) => {
         if (data.groups?.length) {
-          const consolidated = applyConsolidation(basicList, data.groups);
+          const consolidated = applyRecentSnapshot(applyConsolidation(basicList, data.groups), 'consolidated');
           setGroceryLists((prev) => ({ ...prev, [basicList.mealPlanId]: consolidated }));
         }
       })
@@ -160,19 +175,8 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
   const applyPantryMatch = useCallback(
     (pantryNames: string[]): number => {
       if (!groceryList) return 0;
-      const matches = (item: GroceryItem) => pantryNames.some((n) => namesMatch(n, item.name));
-      const count = groceryList.sections.reduce(
-        (sum, s) => sum + s.items.filter(matches).length,
-        0
-      );
-      updateCurrentList((list) => ({
-        ...list,
-        sections: list.sections.map((section) => ({
-          ...section,
-          items: section.items.map((item) => ({ ...item, haveIt: matches(item) })),
-        })),
-      }));
-      return count;
+      updateCurrentList((list) => markHaveIt(list, pantryNames).list);
+      return markHaveIt(groceryList, pantryNames).count;
     },
     [groceryList, updateCurrentList]
   );
