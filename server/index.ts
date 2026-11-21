@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { POST as agentChatHandler } from '../app/api/agent/chat+api';
 import { POST as scanRecipeHandler } from '../app/api/scan-recipe+api';
+import { POST as scanPantryHandler } from '../app/api/scan-pantry+api';
 import { POST as deleteAccountHandler } from '../app/api/delete-account+api';
 import { GET as homeHandler } from '../app/home+api';
 import { GET as privacyHandler } from '../app/privacy+api';
@@ -49,6 +50,7 @@ async function adaptResponseHandler(
 
 app.post('/api/agent/chat', (req, res) => adaptJsonHandler(agentChatHandler, req, res));
 app.post('/api/scan-recipe', (req, res) => adaptJsonHandler(scanRecipeHandler, req, res));
+app.post('/api/scan-pantry', (req, res) => adaptJsonHandler(scanPantryHandler, req, res));
 app.post('/api/delete-account', (req, res) => adaptJsonHandler(deleteAccountHandler, req, res));
 
 app.get('/home', (req, res) => adaptResponseHandler(homeHandler, req, res));

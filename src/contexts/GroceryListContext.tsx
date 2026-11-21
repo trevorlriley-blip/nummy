@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { GroceryList } from '../types/groceryList';
+import { GroceryList, GroceryItem } from '../types/groceryList';
 import { StoreSection } from '../types/recipe';
 import { sampleGroceryList } from '../data/groceryList';
 import { generateGroceryList, applyConsolidation } from '../utils/groceryListGenerator';
 import { useMealPlan } from './MealPlanContext';
 import { STORAGE_KEYS, saveToStorage, loadFromStorage } from '../utils/storage';
+import { namesMatch } from '../utils/pantryMatch';
 
 interface MergeGroup {
   ids: string[];
@@ -19,6 +20,11 @@ interface GroceryListContextValue {
   toggleItemChecked: (itemId: string) => void;
   checkAllInSection: (category: StoreSection) => void;
   uncheckAll: () => void;
+  /** Marks items matching the given pantry names as haveIt (replacing earlier matches). Returns the match count. */
+  applyPantryMatch: (pantryNames: string[]) => number;
+  setItemHaveIt: (itemId: string, haveIt: boolean) => void;
+  haveItItems: GroceryItem[];
+  haveItCount: number;
   checkedCount: number;
   totalCount: number;
   totalCost: number;
@@ -144,15 +150,47 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
     });
   }, [updateCurrentList]);
 
-  const checkedCount = groceryList?.checkedItems ?? 0;
-  const totalCount = groceryList?.totalItems ?? 0;
-  const totalCost = groceryList?.totalEstimatedCost ?? 0;
-  const checkedCost = groceryList
-    ? groceryList.sections.reduce(
-        (sum, s) => sum + s.items.filter((i) => i.isChecked).reduce((s2, i) => s2 + i.estimatedCost, 0),
+  const applyPantryMatch = useCallback(
+    (pantryNames: string[]): number => {
+      if (!groceryList) return 0;
+      const matches = (item: GroceryItem) => pantryNames.some((n) => namesMatch(n, item.name));
+      const count = groceryList.sections.reduce(
+        (sum, s) => sum + s.items.filter(matches).length,
         0
-      )
-    : 0;
+      );
+      updateCurrentList((list) => ({
+        ...list,
+        sections: list.sections.map((section) => ({
+          ...section,
+          items: section.items.map((item) => ({ ...item, haveIt: matches(item) })),
+        })),
+      }));
+      return count;
+    },
+    [groceryList, updateCurrentList]
+  );
+
+  const setItemHaveIt = useCallback(
+    (itemId: string, haveIt: boolean) => {
+      updateCurrentList((list) => ({
+        ...list,
+        sections: list.sections.map((section) => ({
+          ...section,
+          items: section.items.map((item) => (item.id === itemId ? { ...item, haveIt } : item)),
+        })),
+      }));
+    },
+    [updateCurrentList]
+  );
+
+  // Items the pantry already covers are excluded from progress and cost totals.
+  const allItems = groceryList?.sections.flatMap((s) => s.items) ?? [];
+  const needed = allItems.filter((i) => !i.haveIt);
+  const haveItItems = allItems.filter((i) => i.haveIt);
+  const checkedCount = needed.filter((i) => i.isChecked).length;
+  const totalCount = needed.length;
+  const totalCost = needed.reduce((sum, i) => sum + i.estimatedCost, 0);
+  const checkedCost = needed.filter((i) => i.isChecked).reduce((sum, i) => sum + i.estimatedCost, 0);
 
   return (
     <GroceryListContext.Provider
@@ -162,6 +200,10 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
         toggleItemChecked,
         checkAllInSection,
         uncheckAll,
+        applyPantryMatch,
+        setItemHaveIt,
+        haveItItems,
+        haveItCount: haveItItems.length,
         checkedCount,
         totalCount,
         totalCost,

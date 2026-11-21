@@ -13,6 +13,8 @@ export const STORAGE_KEYS = {
   REJECTION_HISTORY: '@mealplan_rejection_history',
   THEME_PREFERENCE: '@mealplan_theme_preference',
   MY_RECIPES: '@mealplan_my_recipes',
+  PANTRY_SNAPSHOT: '@mealplan_pantry_snapshot',
+  TEST_LOG: '@mealplan_test_log',
 } as const;
 
 export async function saveToStorage<T>(key: string, value: T): Promise<void> {

@@ -20,6 +20,8 @@ import { useRouter } from 'expo-router';
 import { useAppTheme } from '../../../src/hooks/useAppTheme';
 import { useGroceryList } from '../../../src/contexts/GroceryListContext';
 import { useMealPlan } from '../../../src/contexts/MealPlanContext';
+import { UseFirstCard } from '../../../src/components/grocery/UseFirstCard';
+import { usePantryCapture } from '../../../src/hooks/usePantryCapture';
 import { WeekNavigator } from '../../../src/components/mealPlan/WeekNavigator';
 import { spacing } from '../../../src/theme/spacing';
 import { GrocerySection, GroceryItem } from '../../../src/types/groceryList';
@@ -34,7 +36,11 @@ export default function GroceryListScreen() {
     uncheckAll,
     checkedCount,
     totalCount,
+    haveItItems,
+    haveItCount,
+    setItemHaveIt,
   } = useGroceryList();
+  const { start: startPantryScan, isScanning } = usePantryCapture();
   const { currentPlan, goToPreviousWeek, goToNextWeek, canGoBack, canGoForward } = useMealPlan();
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
@@ -52,6 +58,21 @@ export default function GroceryListScreen() {
       return next;
     });
   }, []);
+
+  const [haveItOpen, setHaveItOpen] = useState(false);
+
+  const snapButton = (
+    <Button
+      mode="contained-tonal"
+      icon="fridge-outline"
+      onPress={startPantryScan}
+      loading={isScanning}
+      disabled={isScanning}
+      style={styles.snapButton}
+    >
+      {isScanning ? 'Reading your photos…' : 'Snap fridge & pantry'}
+    </Button>
+  );
 
   const progress = totalCount > 0 ? checkedCount / totalCount : 0;
 
@@ -76,6 +97,7 @@ export default function GroceryListScreen() {
           >
             Generate a meal plan first to create your grocery list.
           </Text>
+          {snapButton}
         </View>
       </SafeAreaView>
     );
@@ -114,9 +136,16 @@ export default function GroceryListScreen() {
 
         {/* Summary Bar */}
         <View style={[styles.summaryBar, { backgroundColor: theme.colors.primaryContainer }]}>
-          <Text variant="labelMedium" style={{ color: theme.colors.onPrimaryContainer }}>
-            {checkedCount} / {totalCount} items
-          </Text>
+          <View style={styles.summaryRow}>
+            <Text variant="labelMedium" style={{ color: theme.colors.onPrimaryContainer }}>
+              {checkedCount} / {totalCount} items
+            </Text>
+            {haveItCount > 0 && (
+              <Text variant="labelSmall" style={{ color: theme.colors.onPrimaryContainer }}>
+                {haveItCount} already have
+              </Text>
+            )}
+          </View>
           <ProgressBar
             progress={progress}
             color={theme.colors.primary}
@@ -141,7 +170,13 @@ export default function GroceryListScreen() {
         contentContainerStyle={styles.scrollContentContainer}
         showsVerticalScrollIndicator={false}
       >
-        {groceryList.sections.map((section) => (
+        {snapButton}
+        <UseFirstCard />
+
+        {groceryList.sections
+          .map((section) => ({ ...section, items: section.items.filter((i) => !i.haveIt) }))
+          .filter((section) => section.items.length > 0)
+          .map((section) => (
           <SectionCard
             key={section.category}
             section={section}
@@ -151,6 +186,57 @@ export default function GroceryListScreen() {
             theme={theme}
           />
         ))}
+
+        {haveItItems.length > 0 && (
+          <View style={[styles.sectionCard, { backgroundColor: theme.colors.surface }]}>
+            <Pressable onPress={() => setHaveItOpen((v) => !v)} style={styles.sectionHeader}>
+              <View style={styles.sectionHeaderLeft}>
+                <MaterialCommunityIcons name="fridge-outline" size={22} color={theme.colors.primary} />
+                <Text
+                  variant="titleSmall"
+                  style={{ color: theme.colors.onSurface, fontWeight: '600', marginLeft: spacing.sm }}
+                >
+                  Already have
+                </Text>
+                <View style={[styles.countBadge, { backgroundColor: theme.colors.secondaryContainer }]}>
+                  <Text variant="labelSmall" style={{ color: theme.colors.onSecondaryContainer }}>
+                    {haveItItems.length}
+                  </Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons
+                name={haveItOpen ? 'chevron-up' : 'chevron-down'}
+                size={24}
+                color={theme.colors.onSurfaceVariant}
+              />
+            </Pressable>
+            {haveItOpen && (
+              <View>
+                <Divider style={{ backgroundColor: theme.colors.outlineVariant }} />
+                {haveItItems.map((item) => (
+                  <View key={item.id} style={styles.haveItRow}>
+                    <View style={styles.itemDetails}>
+                      <Text variant="bodyMedium" style={{ color: theme.colors.onSurface }}>
+                        {item.name}
+                      </Text>
+                      <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+                        {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                      </Text>
+                    </View>
+                    <Button
+                      compact
+                      mode="text"
+                      onPress={() => setItemHaveIt(item.id, false)}
+                      textColor={theme.colors.primary}
+                    >
+                      Undo
+                    </Button>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Find Nearby Stores Button */}
         <Button
@@ -319,6 +405,22 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xs,
     paddingBottom: spacing.sm,
     gap: 6,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  snapButton: {
+    marginBottom: spacing.sm,
+    borderRadius: 12,
+  },
+  haveItRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.xs,
   },
   progressBar: {
     height: 7,

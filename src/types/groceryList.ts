@@ -8,6 +8,8 @@ export interface GroceryItem {
   category: StoreSection;
   estimatedCost: number;
   isChecked: boolean;
+  /** Set when a pantry snapshot says we already have this. Separate from isChecked. */
+  haveIt?: boolean;
   fromRecipeIds: string[];
   notes?: string;
 }

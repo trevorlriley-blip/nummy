@@ -1,9 +1,9 @@
-import React, { useRef, useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { View, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, Pressable } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 
 import { useAppTheme } from '../src/hooks/useAppTheme';
 import { useAgent } from '../src/contexts/AgentContext';
@@ -18,11 +18,23 @@ export default function AgentScreen() {
   const router = useRouter();
   const { messages, isLoading, quickReplies, sendMessage, resetChat } = useAgent();
   const flatListRef = useRef<FlatList>(null);
+  const { initialMessage } = useLocalSearchParams<{ initialMessage?: string }>();
+  const [resetDone, setResetDone] = useState(false);
+  const initialSent = useRef(false);
 
   // Reset chat when screen mounts
   useEffect(() => {
     resetChat();
+    setResetDone(true);
   }, []);
+
+  // Optionally send an opening message (e.g. from "Use first" ideas) once the reset has applied
+  useEffect(() => {
+    if (resetDone && initialMessage && !initialSent.current) {
+      initialSent.current = true;
+      sendMessage(initialMessage);
+    }
+  }, [resetDone]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

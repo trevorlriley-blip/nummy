@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -18,6 +18,7 @@ import {
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 
 import { useAppTheme } from '../../../src/hooks/useAppTheme';
 import { useUser } from '../../../src/contexts/UserContext';
@@ -32,6 +33,19 @@ export default function ProfileScreen() {
   const { signOut, deleteAccount } = useAuth();
   const { resetOnboarding } = useOnboarding();
   const [isDeleting, setIsDeleting] = useState(false);
+  const versionTaps = useRef(0);
+  const versionTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Hidden: tap the version text 5 times to open the test log
+  const handleVersionTap = () => {
+    versionTaps.current += 1;
+    if (versionTapTimer.current) clearTimeout(versionTapTimer.current);
+    versionTapTimer.current = setTimeout(() => { versionTaps.current = 0; }, 2000);
+    if (versionTaps.current >= 5) {
+      versionTaps.current = 0;
+      router.push('/(tabs)/profile/test-log' as any);
+    }
+  };
   const { preferences } = user;
 
   const getInitials = (name: string): string => {
@@ -481,6 +495,12 @@ export default function ProfileScreen() {
           )}
         </Button>
 
+        <Pressable onPress={handleVersionTap} style={styles.versionTap}>
+          <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            Nummy v{Constants.expoConfig?.version ?? ''}
+          </Text>
+        </Pressable>
+
         <View style={styles.bottomSpacer} />
       </ScrollView>
     </SafeAreaView>
@@ -488,6 +508,10 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  versionTap: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
   container: {
     flex: 1,
   },
