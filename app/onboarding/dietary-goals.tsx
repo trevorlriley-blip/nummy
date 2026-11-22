@@ -19,11 +19,15 @@ export default function DietaryGoalsScreen() {
   );
 
   const handleToggle = (value: string) => {
-    setSelected((prev) =>
-      prev.includes(value as DietaryGoal)
-        ? prev.filter((v) => v !== value)
-        : [...prev, value as DietaryGoal]
-    );
+    const goal = value as DietaryGoal;
+    if (goal === 'none') {
+      setSelected(['none']);
+      return;
+    }
+    setSelected((prev) => {
+      const without = prev.filter((v) => v !== 'none');
+      return without.includes(goal) ? without.filter((v) => v !== goal) : [...without, goal];
+    });
   };
 
   const handleNext = () => {

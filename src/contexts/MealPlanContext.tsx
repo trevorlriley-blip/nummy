@@ -34,6 +34,7 @@ interface MealPlanContextValue {
   replaceDraftMeal: (plannedMealId: string, newRecipeId: string) => void;
   setDraftPlan: (plan: WeeklyMealPlan) => void;
   deletePlan: (planId: string) => void;
+  clearPlans: () => void;
 }
 
 const MealPlanContext = createContext<MealPlanContextValue | undefined>(undefined);
@@ -282,6 +283,13 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const clearPlans = useCallback(() => {
+    setPlans([]);
+    setSelectedIndex(0);
+    setDraftPlan(null);
+    setDraftRejections([]);
+  }, []);
+
   // Discard the draft plan without saving
   const discardDraftPlan = useCallback(() => {
     setDraftPlan(null);
@@ -415,6 +423,7 @@ export function MealPlanProvider({ children }: { children: React.ReactNode }) {
         replaceDraftMeal,
         setDraftPlan: setDraftPlanFromAgent,
         deletePlan,
+        clearPlans,
       }}
     >
       {children}

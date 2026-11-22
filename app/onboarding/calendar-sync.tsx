@@ -131,9 +131,8 @@ export default function CalendarSyncScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   content: {
-    flex: 1,
-    justifyContent: 'center',
     paddingHorizontal: 32,
+    paddingTop: 24,
     alignItems: 'center',
   },
   iconCircle: {

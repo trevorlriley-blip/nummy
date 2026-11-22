@@ -53,6 +53,7 @@ export default function LoginScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoComplete="email"
+              textContentType="emailAddress"
               left={<TextInput.Icon icon="email-outline" />}
               style={styles.input}
             />
@@ -64,6 +65,8 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               secureTextEntry={secureEntry}
               autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
               left={<TextInput.Icon icon="lock-outline" />}
               right={<TextInput.Icon icon={secureEntry ? 'eye-off' : 'eye'} onPress={() => setSecureEntry(!secureEntry)} />}
               style={styles.input}

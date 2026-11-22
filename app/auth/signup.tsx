@@ -91,6 +91,7 @@ export default function SignUpScreen() {
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
+                textContentType="emailAddress"
                 left={<TextInput.Icon icon="email-outline" />}
                 style={styles.input}
               />
@@ -102,6 +103,9 @@ export default function SignUpScreen() {
                 onChangeText={setPassword}
                 secureTextEntry={secureEntry}
                 autoCapitalize="none"
+                autoComplete="password-new"
+                textContentType="newPassword"
+                passwordRules="minlength: 6;"
                 left={<TextInput.Icon icon="lock-outline" />}
                 right={<TextInput.Icon icon={secureEntry ? 'eye-off' : 'eye'} onPress={() => setSecureEntry(!secureEntry)} />}
                 style={styles.input}
@@ -114,6 +118,8 @@ export default function SignUpScreen() {
                 onChangeText={setConfirmPassword}
                 secureTextEntry={secureEntry}
                 autoCapitalize="none"
+                autoComplete="password-new"
+                textContentType="newPassword"
                 left={<TextInput.Icon icon="lock-check-outline" />}
                 style={styles.input}
               />

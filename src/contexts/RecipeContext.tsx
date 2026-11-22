@@ -107,8 +107,9 @@ export function RecipeProvider({ children }: { children: React.ReactNode }) {
     (prefs: UserPreferences) => {
       return recipes.filter((r) => {
         // Check dietary restrictions
-        if (prefs.dietaryRestrictions.length > 0) {
-          const hasAllTags = prefs.dietaryRestrictions.every((tag) =>
+        const restrictions = prefs.dietaryRestrictions.filter((tag) => tag !== 'none');
+        if (restrictions.length > 0) {
+          const hasAllTags = restrictions.every((tag) =>
             r.dietaryTags.includes(tag)
           );
           if (!hasAllTags) return false;

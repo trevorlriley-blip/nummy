@@ -68,10 +68,10 @@ class RecipeStore {
 // Wizard fast-path helpers
 // ---------------------------------------------------------------------------
 
-function buildWizardSearches(message: string, preferences: UserPreferences): Array<Record<string, string | number>> {
+function buildWizardSearches(message: string, preferences: UserPreferences): Array<{ params: Record<string, string | number>; mealType: MealType }> {
   const base: Record<string, string | number> = { number: 10 };
 
-  const diets = preferences.dietaryRestrictions ?? [];
+  const diets = (preferences.dietaryRestrictions ?? []).filter((d) => d !== 'none');
   if (diets.length > 0) base.diet = diets[0];
   const allergies = (preferences.allergies ?? []).filter((a) => a !== 'none');
   if (allergies.length > 0) base.intolerances = allergies.join(',');
@@ -86,23 +86,45 @@ function buildWizardSearches(message: string, preferences: UserPreferences): Arr
     ...(preferences.includeSnacks ? ['snack' as const] : []),
     ...(preferences.includeDesserts ? ['dessert' as const] : []),
   ];
-  const searches: Array<Record<string, string | number>> = [];
+  const searches: Array<{ params: Record<string, string | number>; mealType: MealType }> = [];
 
   if (mealsToInclude.includes('breakfast')) {
-    searches.push({ ...base, query: 'breakfast', type: 'breakfast' });
+    searches.push({ params: { ...base, query: 'breakfast', type: 'breakfast' }, mealType: 'breakfast' });
   }
   if (mealsToInclude.includes('lunch')) {
-    searches.push({ ...base, query: 'quick light lunch salad sandwich', type: 'main course', maxReadyTime: 20 });
+    searches.push({ params: { ...base, query: 'quick light lunch salad sandwich', type: 'main course', maxReadyTime: 20 }, mealType: 'lunch' });
   }
   if (mealsToInclude.includes('dinner')) {
-    searches.push({ ...base, query: cuisine ? `${cuisine} dinner` : 'healthy dinner', type: 'main course', ...(cuisine ? { cuisine } : {}), ...(isQuick ? { maxReadyTime: 30 } : {}) });
-    searches.push({ ...base, query: cuisine ? cuisine : 'easy weeknight dinner', type: 'main course', ...(cuisine ? { cuisine } : {}) });
+    searches.push({ params: { ...base, query: cuisine ? `${cuisine} dinner` : 'healthy dinner', type: 'main course', ...(cuisine ? { cuisine } : {}), ...(isQuick ? { maxReadyTime: 30 } : {}) }, mealType: 'dinner' });
+    searches.push({ params: { ...base, query: cuisine ? cuisine : 'easy weeknight dinner', type: 'main course', ...(cuisine ? { cuisine } : {}) }, mealType: 'dinner' });
+
+    // If the custom prompt mentions a specific dish, add a targeted search for it
+    const dishKeywords: Array<[RegExp, string]> = [
+      [/pasta|spaghetti|lasagna|fettuccine|penne|linguine|carbonara|bolognese/i, 'pasta'],
+      [/pizza/i, 'pizza'],
+      [/sushi|ramen/i, 'japanese'],
+      [/tacos|enchiladas|fajitas|burritos/i, 'mexican'],
+      [/curry/i, 'curry'],
+      [/stir.?fry/i, 'stir fry'],
+      [/burger/i, 'burger'],
+      [/salmon|fish/i, 'salmon fish'],
+      [/steak|beef/i, 'steak beef'],
+      [/soup|stew/i, 'soup stew'],
+      [/chicken/i, 'chicken'],
+      [/risotto/i, 'risotto'],
+    ];
+    for (const [pattern, query] of dishKeywords) {
+      if (pattern.test(msg)) {
+        searches.push({ params: { ...base, query, type: 'main course' }, mealType: 'dinner' });
+        break;
+      }
+    }
   }
   if (mealsToInclude.includes('dessert')) {
-    searches.push({ ...base, query: 'dessert', type: 'dessert' });
+    searches.push({ params: { ...base, query: 'dessert sweet treat', type: 'dessert' }, mealType: 'dessert' });
   }
   if (mealsToInclude.includes('snack')) {
-    searches.push({ ...base, query: 'healthy snack', type: 'snack' });
+    searches.push({ params: { ...base, query: 'healthy snack', type: 'snack' }, mealType: 'snack' });
   }
 
   return searches;
@@ -357,11 +379,18 @@ export async function POST(request: Request): Promise<Response> {
       // 1. Pre-search Spoonacular when there are slots left to fill with new recipes
       const shouldSearch = remainingSlots > 0;
       if (shouldSearch) {
-        const wizardSearchParams = buildWizardSearches(wizardMessage, body.context.preferences);
+        const wizardSearches = buildWizardSearches(wizardMessage, body.context.preferences);
         await Promise.all(
-          wizardSearchParams.map(async (params) => {
+          wizardSearches.map(async ({ params, mealType }) => {
             const raw = await searchSpoonacular(params);
-            raw.map(mapSpoonacularRecipe).forEach((r) => store.add(r));
+            raw.map(mapSpoonacularRecipe).map((r) => {
+              // Ensure each recipe is tagged with the meal type it was searched for,
+              // so swap alternatives are correctly found (e.g. lunch ≠ dinner in our type system)
+              if (!r.mealTypes.includes(mealType)) {
+                return { ...r, mealTypes: [mealType] as MealType[] };
+              }
+              return r;
+            }).forEach((r) => store.add(r));
           })
         );
       }
@@ -392,6 +421,12 @@ export async function POST(request: Request): Promise<Response> {
 
       const hasPreSearched = allStoreRecipes.length > 0;
 
+      // Extract any custom special request from the message (appended as "Also: ...")
+      const alsoMatch = wizardMessage.match(/Also:\s*(.+?)(?:\s*Please generate|$)/is);
+      const customRequestNote = alsoMatch
+        ? `\n\nSPECIAL USER REQUEST (treat as a hard requirement): ${alsoMatch[1].trim()} — if the pre-loaded recipes cannot satisfy this request, use generate_recipe to create a recipe that does.`
+        : '';
+
       let wizardSystemSuffix: string;
       if (hasPreSearched) {
         const blendNote = hasFamiliar && blend === 100 && actualFamiliarSlots >= totalMealsNeeded
@@ -401,9 +436,9 @@ export async function POST(request: Request): Promise<Response> {
           : hasFamiliar
           ? ` Honor the blend: prefer SAVED RECIPES for the familiar slots, use ADDITIONAL OPTIONS for the rest. Do not repeat any recipe.`
           : '';
-        wizardSystemSuffix = `\n\nWIZARD MODE: Recipes are pre-loaded above. Select from them and call create_meal_plan with the exact IDs. Use generate_recipe only for meal types not covered. Do NOT call search_recipes.${blendNote}`;
+        wizardSystemSuffix = `\n\nWIZARD MODE: Recipes are pre-loaded above. Select from them and call create_meal_plan with the exact IDs. Use generate_recipe only for meal types not covered. Do NOT call search_recipes. CRITICAL: Never assign the same recipe ID to more than one meal slot — every slot must have a unique recipe ID. Match each recipe to the correct meal type: only use dessert recipes for dessert slots, only use snack recipes for snack slots, etc.${blendNote}${customRequestNote}`;
       } else {
-        wizardSystemSuffix = `\n\nWIZARD MODE: Call generate_recipe exactly ${totalMealsNeeded} times — ONCE for EACH meal slot (${daysCount} days × ${mealsToInclude.length} meal types: ${mealsToInclude.join(', ')}). You MUST make ALL ${totalMealsNeeded} generate_recipe calls covering every meal type for every day before the meal plan is built. Do NOT call search_recipes.`;
+        wizardSystemSuffix = `\n\nWIZARD MODE: Call generate_recipe exactly ${totalMealsNeeded} times — ONCE for EACH meal slot (${daysCount} days × ${mealsToInclude.length} meal types: ${mealsToInclude.join(', ')}). You MUST make ALL ${totalMealsNeeded} generate_recipe calls covering every meal type for every day before the meal plan is built. Do NOT call search_recipes. CRITICAL: Every recipe MUST have a completely unique title and different ingredients — never generate the same recipe twice. Each recipe must genuinely match its meal type: dessert slots require actual sweet desserts (cookies, cake, pudding, fruit crisp, ice cream — never eggs, toast, or savory food); snack slots require actual snacks; breakfast slots require breakfast food.${customRequestNote}`;
       }
       const wizardSystem = systemPrompt + wizardSystemSuffix;
 
@@ -418,13 +453,30 @@ export async function POST(request: Request): Promise<Response> {
       let wizardFinalText = '';
       let wizardMessages: Anthropic.MessageParam[] = [{ role: 'user', content: wizardFirstMessage }];
 
-      for (let round = 0; round < 2; round++) {
-        // Round 0: if we have pre-searched recipes → force create_meal_plan immediately.
-        //          if no pre-searched recipes → force generate_recipe to build them.
-        // Round 1: always force create_meal_plan (now has IDs from generate_recipe results).
-        const isCreateRound = round === 1 || hasPreSearched;
-        const roundTools = isCreateRound ? createMealPlanTool : generateRecipeTool;
-        const roundToolChoice: Anthropic.ToolChoiceTool = { type: 'tool', name: isCreateRound ? 'create_meal_plan' : 'generate_recipe' };
+      // When the user has a custom special request AND pre-searched recipes exist, we need
+      // an extra round: round 0 = auto (Haiku may call generate_recipe for the special dish),
+      // round 1 = forced create_meal_plan. Without a custom request, round 0 forces
+      // create_meal_plan immediately (faster). Without pre-searched recipes, round 0 forces
+      // generate_recipe for all meals, round 1 forces create_meal_plan.
+      const hasCustomRequest = !!customRequestNote;
+      const maxRounds = hasCustomRequest && hasPreSearched ? 3 : 2;
+
+      for (let round = 0; round < maxRounds; round++) {
+        // Determine tool choice for this round:
+        // - Pre-searched + custom request: round 0 = auto (generate_recipe allowed), round 1+ = create_meal_plan
+        // - Pre-searched, no custom request: round 0 = create_meal_plan (fast path)
+        // - No pre-searched: round 0 = generate_recipe, round 1 = create_meal_plan
+        const isCreateRound = hasPreSearched
+          ? (hasCustomRequest ? round >= 1 : true)
+          : round === 1;
+        const isAutoRound = hasCustomRequest && hasPreSearched && round === 0;
+
+        const roundTools = isAutoRound
+          ? [...generateRecipeTool, ...createMealPlanTool]
+          : isCreateRound ? createMealPlanTool : generateRecipeTool;
+        const roundToolChoice: Anthropic.Messages.ToolChoice = isAutoRound
+          ? { type: 'auto' }
+          : { type: 'tool', name: isCreateRound ? 'create_meal_plan' : 'generate_recipe' };
 
         const wizardResponse = await client.messages.create({
           model: 'claude-haiku-4-5-20251001',

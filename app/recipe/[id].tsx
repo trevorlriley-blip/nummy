@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
   },
-  dietTag: { height: 28 },
+  dietTag: { paddingVertical: 2 },
   description: {
     paddingHorizontal: 16,
     paddingTop: 16,

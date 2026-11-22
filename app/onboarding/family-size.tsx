@@ -58,13 +58,6 @@ export default function FamilySizeScreen() {
           />
         </View>
 
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant, textAlign: 'center' }}>
-          {familySize === 1
-            ? 'Just for me'
-            : familySize <= 3
-              ? `${familySize} people`
-              : `${familySize} people — family style!`}
-        </Text>
       </View>
 
       <View style={styles.footer}>
@@ -86,7 +79,7 @@ export default function FamilySizeScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  content: { flex: 1, justifyContent: 'center', paddingHorizontal: 32 },
+  content: { flex: 1, paddingHorizontal: 32, paddingTop: 24 },
   title: { textAlign: 'center', fontWeight: '700', marginBottom: 8 },
   subtitle: { textAlign: 'center', marginBottom: 48 },
   counter: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },

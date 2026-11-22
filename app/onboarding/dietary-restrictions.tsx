@@ -19,11 +19,15 @@ export default function DietaryRestrictionsScreen() {
   );
 
   const handleToggle = (value: string) => {
-    setSelected((prev) =>
-      prev.includes(value as DietaryTag)
-        ? prev.filter((v) => v !== value)
-        : [...prev, value as DietaryTag]
-    );
+    const tag = value as DietaryTag;
+    if (tag === 'none') {
+      setSelected(['none']);
+      return;
+    }
+    setSelected((prev) => {
+      const without = prev.filter((v) => v !== 'none');
+      return without.includes(tag) ? without.filter((v) => v !== tag) : [...without, tag];
+    });
   };
 
   const handleNext = () => {
@@ -54,12 +58,6 @@ export default function DietaryRestrictionsScreen() {
           selected={selected}
           onToggle={handleToggle}
         />
-
-        {selected.length === 0 && (
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant, marginTop: 16, textAlign: 'center' }}>
-            No restrictions? That's fine — just tap Next!
-          </Text>
-        )}
       </ScrollView>
 
       <View style={styles.footer}>

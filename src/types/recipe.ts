@@ -55,7 +55,8 @@ export type DietaryTag =
   | 'heart-healthy'
   | 'diabetic-friendly'
   | 'nut-free'
-  | 'soy-free';
+  | 'soy-free'
+  | 'none';
 
 export type MealType =
   | 'breakfast'

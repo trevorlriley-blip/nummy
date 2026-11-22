@@ -5,10 +5,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAppTheme } from '../../src/hooks/useAppTheme';
 import { useOnboarding } from '../../src/contexts/OnboardingContext';
+import { useMealPlan } from '../../src/contexts/MealPlanContext';
 
 export default function CompleteScreen() {
   const theme = useAppTheme();
   const { completeOnboarding, state } = useOnboarding();
+  const { clearPlans } = useMealPlan();
 
   const prefs = state.partialPreferences;
   const summaryItems = [
@@ -81,7 +83,7 @@ export default function CompleteScreen() {
       <View style={styles.bottom}>
         <Button
           mode="contained"
-          onPress={completeOnboarding}
+          onPress={() => { clearPlans(); completeOnboarding(); }}
           style={[styles.button, { backgroundColor: theme.colors.primary }]}
           labelStyle={{ fontWeight: '700', fontSize: 16 }}
           contentStyle={{ paddingVertical: 6 }}

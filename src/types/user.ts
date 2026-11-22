@@ -26,6 +26,7 @@ export type DietaryGoal =
   | 'heart-health'
   | 'meal-variety'
   | 'save-money'
+  | 'none'
   | 'reduce-food-waste';
 
 export type Allergy =

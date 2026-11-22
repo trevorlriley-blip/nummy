@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { useAppTheme } from '../../src/hooks/useAppTheme';
 import { useOnboarding } from '../../src/contexts/OnboardingContext';
 import { StepIndicator } from '../../src/components/common/StepIndicator';
+import { ChipSelector } from '../../src/components/common/ChipSelector';
 import { allergyOptions } from '../../src/data/onboardingOptions';
 import { Allergy } from '../../src/types/user';
 
@@ -60,72 +61,11 @@ export default function AllergiesScreen() {
           </Text>
         </Surface>
 
-        <View style={styles.grid}>
-          {allergyOptions.map((option) => {
-            const isSelected = selected.includes(option.value);
-            const isNone = option.value === 'none';
-            return (
-              <View key={option.value} style={{ width: isNone ? '100%' : '48%' }}>
-                <Surface
-                  style={[
-                    styles.card,
-                    {
-                      borderColor: isSelected
-                        ? isNone ? theme.colors.primary : theme.colors.error
-                        : theme.colors.outlineVariant,
-                      borderWidth: isSelected ? 2 : 1,
-                      backgroundColor: isSelected
-                        ? isNone ? theme.colors.primaryContainer : theme.colors.errorContainer
-                        : theme.colors.surface,
-                    },
-                  ]}
-                  elevation={isSelected ? 1 : 0}
-                >
-                  <View
-                    style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
-                    onTouchEnd={() => handleToggle(option.value)}
-                  >
-                    <MaterialCommunityIcons
-                      name={option.icon as any}
-                      size={24}
-                      color={isSelected
-                        ? isNone ? theme.colors.primary : theme.colors.error
-                        : theme.colors.onSurfaceVariant}
-                    />
-                    <View style={{ marginLeft: 10, flex: 1 }}>
-                      <Text
-                        variant="titleSmall"
-                        style={{
-                          fontWeight: '600',
-                          color: isSelected
-                            ? isNone ? theme.colors.onPrimaryContainer : theme.colors.onErrorContainer
-                            : theme.colors.onSurface,
-                        }}
-                      >
-                        {option.label}
-                      </Text>
-                      {isNone && (
-                        <Text
-                          variant="bodySmall"
-                          style={{ color: isSelected ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant }}
-                        >
-                          {option.description}
-                        </Text>
-                      )}
-                    </View>
-                    {isSelected && (
-                      <MaterialCommunityIcons
-                        name="check-circle"
-                        size={20}
-                        color={isNone ? theme.colors.primary : theme.colors.error}
-                      />
-                    )}
-                  </View>
-                </Surface>
-              </View>
-            );
-          })}
-        </View>
+        <ChipSelector
+          options={allergyOptions.map((o) => ({ value: o.value, label: o.label, icon: o.icon }))}
+          selected={selected}
+          onToggle={handleToggle}
+        />
       </ScrollView>
 
       <View style={styles.footer}>
@@ -156,18 +96,6 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 10,
     marginBottom: 20,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  card: {
-    padding: 14,
-    borderRadius: 12,
-    minHeight: 52,
-    justifyContent: 'center',
   },
   footer: {
     flexDirection: 'row',

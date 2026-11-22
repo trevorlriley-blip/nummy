@@ -45,6 +45,12 @@ export const dietaryRestrictionOptions: OnboardingOption<DietaryTag>[] = [
     description: 'Whole foods based on what our ancestors might have eaten',
     icon: 'food-drumstick',
   },
+  {
+    value: 'none',
+    label: 'None',
+    description: 'No dietary restrictions',
+    icon: 'check-circle-outline',
+  },
 ];
 
 export const allergyOptions: OnboardingOption<Allergy>[] = [
@@ -215,6 +221,12 @@ export const dietaryGoalOptions: OnboardingOption<DietaryGoal>[] = [
     label: 'Blood Sugar Management',
     description: 'Low glycemic meals to help stabilize blood sugar',
     icon: 'chart-timeline-variant',
+  },
+  {
+    value: 'none',
+    label: 'None',
+    description: 'No specific dietary goals',
+    icon: 'check-circle-outline',
   },
 ];
 
