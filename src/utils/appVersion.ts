@@ -53,3 +53,22 @@ export function updateLabel(v: VersionInfo = getVersionInfo()): string {
 export function versionSummary(v: VersionInfo = getVersionInfo()): string {
   return ['Nummy', versionLabel(v), updateLabel(v), v.channel].filter(Boolean).join(' · ').replace('Nummy · ', 'Nummy ');
 }
+
+export type UpdateCheckResult = 'ready' | 'up-to-date' | 'unavailable' | 'error';
+
+/** Checks for an OTA update and downloads it. 'ready' means call applyUpdate() to restart into it. */
+export async function checkForUpdate(): Promise<UpdateCheckResult> {
+  try {
+    if (!Updates.isEnabled) return 'unavailable'; // dev client / Expo Go
+    const check = await Updates.checkForUpdateAsync();
+    if (!check.isAvailable) return 'up-to-date';
+    await Updates.fetchUpdateAsync();
+    return 'ready';
+  } catch {
+    return 'error';
+  }
+}
+
+export function applyUpdate(): Promise<void> {
+  return Updates.reloadAsync();
+}

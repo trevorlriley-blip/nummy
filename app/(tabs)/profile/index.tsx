@@ -18,7 +18,7 @@ import {
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { getVersionInfo, versionLabel, updateLabel } from '../../../src/utils/appVersion';
+import { getVersionInfo, versionLabel, updateLabel, checkForUpdate, applyUpdate } from '../../../src/utils/appVersion';
 
 import { useAppTheme } from '../../../src/hooks/useAppTheme';
 import { useUser } from '../../../src/contexts/UserContext';
@@ -37,6 +37,25 @@ export default function ProfileScreen() {
   const { defaultBrand, setDefaultBrand, staples } = useOrdering();
   const [isDeleting, setIsDeleting] = useState(false);
   const versionInfo = getVersionInfo();
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  const handleCheckForUpdate = async () => {
+    setIsCheckingUpdate(true);
+    const result = await checkForUpdate();
+    setIsCheckingUpdate(false);
+    if (result === 'ready') {
+      Alert.alert('Update ready', 'Restart Nummy to use the latest version.', [
+        { text: 'Later', style: 'cancel' },
+        { text: 'Restart now', onPress: () => { applyUpdate(); } },
+      ]);
+    } else if (result === 'up-to-date') {
+      Alert.alert("You're up to date", `${versionLabel(versionInfo)} is the latest.`);
+    } else if (result === 'unavailable') {
+      Alert.alert('Updates unavailable', 'Updates only work in the installed TestFlight app.');
+    } else {
+      Alert.alert("Couldn't check for updates", 'Check your connection and try again.');
+    }
+  };
   const versionTaps = useRef(0);
   const versionTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -540,6 +559,16 @@ export default function ProfileScreen() {
             {updateLabel(versionInfo)}{versionInfo.channel ? ` · ${versionInfo.channel}` : ''}
           </Text>
         </Pressable>
+        <Button
+          mode="text"
+          compact
+          icon="update"
+          onPress={handleCheckForUpdate}
+          loading={isCheckingUpdate}
+          disabled={isCheckingUpdate}
+        >
+          Check for updates
+        </Button>
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
