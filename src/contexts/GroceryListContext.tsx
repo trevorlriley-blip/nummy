@@ -9,6 +9,8 @@ import { markHaveIt, SNAPSHOT_MAX_AGE_MS } from '../utils/pantryMatch';
 import { logEvent } from '../utils/testLog';
 import { useAuth } from './AuthContext';
 import { usePantry } from './PantryContext';
+import { useOrdering } from './OrderingContext';
+import { addExtras } from '../utils/orderList';
 
 interface MergeGroup {
   ids: string[];
@@ -40,6 +42,7 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
   const { currentPlan } = useMealPlan();
   const { session } = useAuth();
   const { snapshot } = usePantry();
+  const { staples, requests, ready: orderingReady } = useOrdering();
   // Latest values for use inside async callbacks
   const snapshotRef = useRef(snapshot);
   snapshotRef.current = snapshot;
@@ -116,11 +119,30 @@ export function GroceryListProvider({ children }: { children: React.ReactNode })
       setGroceryLists((prev) => {
         const current = prev[currentPlan.id];
         if (!current) return prev;
-        return { ...prev, [currentPlan.id]: updater(current) };
+        const next = updater(current);
+        return next === current ? prev : { ...prev, [currentPlan.id]: next };
       });
     },
     [currentPlan?.id]
   );
+
+  // Merge weekly staples + family requests into the current list (after consolidation settles).
+  // Idempotent: adds what's missing, prunes what was deleted, and pantry-matches only the new items.
+  useEffect(() => {
+    if (!orderingReady || isConsolidating || !groceryList) return;
+    const snap = snapshotRef.current;
+    const fresh = snap && Date.now() - Date.parse(snap.takenAt) <= SNAPSHOT_MAX_AGE_MS;
+    const { list: merged, matched } = addExtras(
+      groceryList,
+      staples,
+      requests,
+      fresh ? snap.items.map((i) => i.name) : null
+    );
+    if (merged !== groceryList) {
+      updateCurrentList(() => merged);
+      if (fresh && matched > 0) logEvent('list_matched', { count: matched, auto: true, stage: 'extras' });
+    }
+  }, [orderingReady, staples, requests, isConsolidating, groceryList?.id]);
 
   const toggleItemChecked = useCallback(
     (itemId: string) => {

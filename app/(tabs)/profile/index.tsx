@@ -24,6 +24,8 @@ import { useAppTheme } from '../../../src/hooks/useAppTheme';
 import { useUser } from '../../../src/contexts/UserContext';
 import { useAuth } from '../../../src/contexts/AuthContext';
 import { useOnboarding } from '../../../src/contexts/OnboardingContext';
+import { useOrdering } from '../../../src/contexts/OrderingContext';
+import { BrandPreference, BRAND_LABELS } from '../../../src/types/ordering';
 import { spacing } from '../../../src/theme/spacing';
 
 export default function ProfileScreen() {
@@ -32,6 +34,7 @@ export default function ProfileScreen() {
   const { user, resetProfile, updatePreferences } = useUser();
   const { signOut, deleteAccount } = useAuth();
   const { resetOnboarding } = useOnboarding();
+  const { defaultBrand, setDefaultBrand, staples } = useOrdering();
   const [isDeleting, setIsDeleting] = useState(false);
   const versionTaps = useRef(0);
   const versionTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -454,6 +457,39 @@ export default function ProfileScreen() {
           </Card.Content>
         </Card>
 
+        {/* Ordering */}
+        <Card style={[styles.orderingCard, { backgroundColor: theme.colors.surface }]}>
+          <Card.Content style={{ gap: spacing.sm }}>
+            <Text variant="titleSmall" style={{ color: theme.colors.onSurface, fontWeight: '600' }}>
+              Ordering
+            </Text>
+            <Text variant="labelMedium" style={{ color: theme.colors.onSurfaceVariant }}>
+              Brand preference
+            </Text>
+            <View style={styles.brandRow}>
+              {([
+                ['store', 'Store brand is fine'],
+                ['name', BRAND_LABELS.name],
+                ['ask', 'Ask me per item'],
+              ] as [BrandPreference, string][]).map(([value, label]) => (
+                <Chip key={value} compact selected={defaultBrand === value} onPress={() => setDefaultBrand(value)}>
+                  {label}
+                </Chip>
+              ))}
+            </View>
+            <Pressable
+              onPress={() => router.push('/(tabs)/profile/staples' as any)}
+              style={styles.staplesRow}
+              accessibilityRole="button"
+            >
+              <Text variant="bodyLarge" style={{ color: theme.colors.onSurface, flex: 1 }}>
+                Weekly staples ({staples.length})
+              </Text>
+              <MaterialCommunityIcons name="chevron-right" size={22} color={theme.colors.onSurfaceVariant} />
+            </Pressable>
+          </Card.Content>
+        </Card>
+
         {/* Reset Onboarding */}
         <Button
           mode="outlined"
@@ -508,6 +544,21 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
+  orderingCard: {
+    marginHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    borderRadius: 12,
+  },
+  brandRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  staplesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
   versionTap: {
     alignItems: 'center',
     paddingVertical: spacing.md,

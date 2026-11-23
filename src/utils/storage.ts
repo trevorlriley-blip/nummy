@@ -15,6 +15,7 @@ export const STORAGE_KEYS = {
   MY_RECIPES: '@mealplan_my_recipes',
   PANTRY_SNAPSHOT: '@mealplan_pantry_snapshot',
   TEST_LOG: '@mealplan_test_log',
+  ORDERING: '@mealplan_ordering',
 } as const;
 
 export async function saveToStorage<T>(key: string, value: T): Promise<void> {

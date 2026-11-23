@@ -83,7 +83,7 @@ export function applyConsolidation(list: GroceryList, groups: MergeGroup[]): Gro
   return { ...list, sections, totalItems, totalEstimatedCost: totalCost, checkedItems: 0 };
 }
 
-const SECTION_DISPLAY_NAMES: Record<StoreSection, string> = {
+export const SECTION_DISPLAY_NAMES: Record<StoreSection, string> = {
   produce: 'Produce',
   dairy: 'Dairy & Eggs',
   meat: 'Meat & Poultry',

@@ -21,6 +21,10 @@ import { useAppTheme } from '../../../src/hooks/useAppTheme';
 import { useGroceryList } from '../../../src/contexts/GroceryListContext';
 import { useMealPlan } from '../../../src/contexts/MealPlanContext';
 import { UseFirstCard } from '../../../src/components/grocery/UseFirstCard';
+import { RequestsCard } from '../../../src/components/grocery/RequestsCard';
+import { useOrdering } from '../../../src/contexts/OrderingContext';
+import { resolveBrandPref } from '../../../src/utils/orderList';
+import { BRAND_LABELS } from '../../../src/types/ordering';
 import { usePantryCapture } from '../../../src/hooks/usePantryCapture';
 import { WeekNavigator } from '../../../src/components/mealPlan/WeekNavigator';
 import { spacing } from '../../../src/theme/spacing';
@@ -41,6 +45,9 @@ export default function GroceryListScreen() {
     setItemHaveIt,
   } = useGroceryList();
   const { start: startPantryScan, isScanning } = usePantryCapture();
+  const { defaultBrand, brandOverrides } = useOrdering();
+  const brandLabelFor = (item: GroceryItem) =>
+    BRAND_LABELS[resolveBrandPref(item, brandOverrides, defaultBrand)];
   const { currentPlan, goToPreviousWeek, goToNextWeek, canGoBack, canGoForward } = useMealPlan();
 
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
@@ -171,7 +178,16 @@ export default function GroceryListScreen() {
         showsVerticalScrollIndicator={false}
       >
         {snapButton}
+        <Button
+          mode="contained"
+          icon="cart-arrow-down"
+          onPress={() => router.push('/(tabs)/grocery/order-smiths' as any)}
+          style={styles.snapButton}
+        >
+          Order at Smith's
+        </Button>
         <UseFirstCard />
+        <RequestsCard />
 
         {groceryList.sections
           .map((section) => ({ ...section, items: section.items.filter((i) => !i.haveIt) }))
@@ -183,6 +199,7 @@ export default function GroceryListScreen() {
             collapsed={!expandedSections.has(section.category)}
             onToggleCollapse={() => toggleSection(section.category)}
             onToggleItem={toggleItemChecked}
+            brandLabelFor={brandLabelFor}
             theme={theme}
           />
         ))}
@@ -261,6 +278,7 @@ interface SectionCardProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   onToggleItem: (itemId: string) => void;
+  brandLabelFor: (item: GroceryItem) => string;
   theme: ReturnType<typeof useAppTheme>;
 }
 
@@ -269,6 +287,7 @@ function SectionCard({
   collapsed,
   onToggleCollapse,
   onToggleItem,
+  brandLabelFor,
   theme,
 }: SectionCardProps) {
   const checkedInSection = section.items.filter((i) => i.isChecked).length;
@@ -331,6 +350,7 @@ function SectionCard({
               key={item.id}
               item={item}
               onToggle={() => onToggleItem(item.id)}
+              brandLabel={brandLabelFor(item)}
               isLast={index === section.items.length - 1}
               theme={theme}
             />
@@ -344,11 +364,12 @@ function SectionCard({
 interface GroceryItemRowProps {
   item: GroceryItem;
   onToggle: () => void;
+  brandLabel: string;
   isLast: boolean;
   theme: ReturnType<typeof useAppTheme>;
 }
 
-function GroceryItemRow({ item, onToggle, isLast, theme }: GroceryItemRowProps) {
+function GroceryItemRow({ item, onToggle, brandLabel, isLast, theme }: GroceryItemRowProps) {
   return (
     <Pressable onPress={onToggle} style={styles.itemRow}>
       <View style={styles.itemLeft}>
@@ -371,7 +392,8 @@ function GroceryItemRow({ item, onToggle, isLast, theme }: GroceryItemRowProps) 
             variant="bodySmall"
             style={{ color: theme.colors.onSurfaceVariant }}
           >
-            {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+            {item.quantity}{item.unit ? ` ${item.unit}` : ''} · {brandLabel}
+            {item.tags?.length ? `  · ${item.tags.join(', ')}` : ''}
           </Text>
         </View>
       </View>

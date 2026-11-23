@@ -74,12 +74,15 @@ export function ingredientContains(ingredientName: string, itemName: string): bo
 /** Marks every list item whose name matches a pantry name as haveIt (clearing stale flags). */
 export function markHaveIt(
   list: GroceryList,
-  pantryNames: string[]
+  pantryNames: string[],
+  /** When given, only these item ids are (re)evaluated; other items keep their current flag. */
+  onlyIds?: Set<string>
 ): { list: GroceryList; count: number } {
   let count = 0;
   const sections = list.sections.map((section) => ({
     ...section,
     items: section.items.map((item) => {
+      if (onlyIds && !onlyIds.has(item.id)) return item;
       const haveIt = pantryNames.some((n) => namesMatch(n, item.name));
       if (haveIt) count++;
       return { ...item, haveIt };
