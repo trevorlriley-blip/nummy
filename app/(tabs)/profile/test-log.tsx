@@ -6,6 +6,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 
 import { useAppTheme } from '../../../src/hooks/useAppTheme';
 import { getLog, clearLog, formatLogAsText, TestLogEntry } from '../../../src/utils/testLog';
+import { versionSummary } from '../../../src/utils/appVersion';
 import { spacing } from '../../../src/theme/spacing';
 
 export default function TestLogScreen() {
@@ -21,7 +22,11 @@ export default function TestLogScreen() {
 
   const share = () => {
     // Oldest first reads best as a text transcript
-    Share.share({ message: formatLogAsText([...entries].reverse()), title: 'Nummy test log' });
+    // Header says which build/update produced these entries
+    Share.share({
+      message: `${versionSummary()}\n\n${formatLogAsText([...entries].reverse())}`,
+      title: 'Nummy test log',
+    });
   };
 
   const clear = async () => {
@@ -43,6 +48,9 @@ export default function TestLogScreen() {
           Share
         </Button>
       </View>
+      <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant, paddingHorizontal: spacing.md, paddingTop: spacing.xs }}>
+        {versionSummary()}
+      </Text>
       <FlatList
         data={entries}
         keyExtractor={(e, i) => `${e.at}-${i}`}

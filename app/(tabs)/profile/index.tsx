@@ -18,7 +18,7 @@ import {
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Constants from 'expo-constants';
+import { getVersionInfo, versionLabel, updateLabel } from '../../../src/utils/appVersion';
 
 import { useAppTheme } from '../../../src/hooks/useAppTheme';
 import { useUser } from '../../../src/contexts/UserContext';
@@ -36,6 +36,7 @@ export default function ProfileScreen() {
   const { resetOnboarding } = useOnboarding();
   const { defaultBrand, setDefaultBrand, staples } = useOrdering();
   const [isDeleting, setIsDeleting] = useState(false);
+  const versionInfo = getVersionInfo();
   const versionTaps = useRef(0);
   const versionTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -533,7 +534,10 @@ export default function ProfileScreen() {
 
         <Pressable onPress={handleVersionTap} style={styles.versionTap}>
           <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            Nummy v{Constants.expoConfig?.version ?? ''}
+            Nummy {versionLabel(versionInfo)}
+          </Text>
+          <Text variant="labelSmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            {updateLabel(versionInfo)}{versionInfo.channel ? ` · ${versionInfo.channel}` : ''}
           </Text>
         </Pressable>
 
