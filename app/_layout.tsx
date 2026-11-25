@@ -79,6 +79,10 @@ function RootLayoutNav() {
           name="agent"
           options={{ presentation: 'fullScreenModal', headerShown: false }}
         />
+        <Stack.Screen
+          name="recap"
+          options={{ presentation: 'fullScreenModal', headerShown: false }}
+        />
       </Stack>
     </>
   );

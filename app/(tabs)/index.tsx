@@ -11,6 +11,7 @@ import { useMealPlan } from '../../src/contexts/MealPlanContext';
 import { useFeedback } from '../../src/contexts/FeedbackContext';
 import { WeekNavigator } from '../../src/components/mealPlan/WeekNavigator';
 import { DayCard } from '../../src/components/mealPlan/DayCard';
+import { WeekendRecapCard } from '../../src/components/recap/WeekendRecapCard';
 
 export default function MealPlanScreen() {
   const theme = useAppTheme();
@@ -144,6 +145,7 @@ export default function MealPlanScreen() {
             canGoForward={canGoForward}
           />
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+            <WeekendRecapCard />
             {currentPlan.days.map((day) => (
               <DayCard
                 key={day.date}

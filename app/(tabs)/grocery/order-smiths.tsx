@@ -83,7 +83,17 @@ export default function OrderSmithsScreen() {
           staples: stapleCount,
           requests: requestCount,
         },
-        orderedRequestIds
+        orderedRequestIds,
+        needed
+          .filter((i) => orderChecked[i.id])
+          .map((i) => ({
+            id: i.id,
+            name: i.name,
+            quantity: i.quantity,
+            unit: i.unit,
+            category: i.category,
+            estimatedCost: i.estimatedCost,
+          }))
       );
       router.back();
     };

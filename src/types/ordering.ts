@@ -24,3 +24,18 @@ export interface GroceryRequest {
   item: string;
   createdAt: string;
 }
+
+/** One item checked off in a completed Smith's order. Kept so the Weekend Recap knows what was bought. */
+export interface OrderedItem {
+  id: string;
+  name: string;
+  quantity: number;
+  unit: string;
+  category: StoreSection;
+  estimatedCost: number;
+}
+
+export interface CompletedOrder {
+  completedAt: string;
+  items: OrderedItem[];
+}

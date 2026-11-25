@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { BrandPreference, GroceryRequest, Staple } from '../types/ordering';
+import { BrandPreference, CompletedOrder, GroceryRequest, OrderedItem, Staple } from '../types/ordering';
 import { STORAGE_KEYS, saveToStorage, loadFromStorage } from '../utils/storage';
 import { normalizeName } from '../utils/pantryMatch';
 import { logEvent } from '../utils/testLog';
@@ -14,6 +14,8 @@ interface OrderingState {
   orderStartedAt: string | null;
   /** Item ids checked off in the current order (separate from the in-store isChecked). */
   orderChecked: Record<string, true>;
+  /** The most recent completed order (checked items only), used by the Weekend Recap. */
+  lastOrder: CompletedOrder | null;
 }
 
 const INITIAL: OrderingState = {
@@ -23,6 +25,7 @@ const INITIAL: OrderingState = {
   brandOverrides: {},
   orderStartedAt: null,
   orderChecked: {},
+  lastOrder: null,
 };
 
 interface OrderingContextValue extends OrderingState {
@@ -38,7 +41,7 @@ interface OrderingContextValue extends OrderingState {
   /** Starts the timer if no order is running; logs order_started only when it actually starts. */
   startOrderIfNeeded: (detail: Record<string, unknown>) => void;
   /** Stops the timer, logs order_done, clears the given requests and the order checkboxes. */
-  completeOrder: (detail: Record<string, unknown>, clearRequestIds: string[]) => void;
+  completeOrder: (detail: Record<string, unknown>, clearRequestIds: string[], orderedItems?: OrderedItem[]) => void;
 }
 
 const OrderingContext = createContext<OrderingContextValue | undefined>(undefined);
@@ -109,7 +112,7 @@ export function OrderingProvider({ children }: { children: React.ReactNode }) {
     logEvent('order_started', detail);
   }, []);
 
-  const completeOrder = useCallback((detail: Record<string, unknown>, clearRequestIds: string[]) => {
+  const completeOrder = useCallback((detail: Record<string, unknown>, clearRequestIds: string[], orderedItems: OrderedItem[] = []) => {
     const started = stateRef.current.orderStartedAt;
     const minutes = started ? Math.round(((Date.now() - Date.parse(started)) / 60000) * 10) / 10 : 0;
     logEvent('order_done', { minutes, ...detail });
@@ -119,6 +122,7 @@ export function OrderingProvider({ children }: { children: React.ReactNode }) {
       requests: s.requests.filter((r) => !clear.has(r.id)),
       orderStartedAt: null,
       orderChecked: {},
+      lastOrder: orderedItems.length > 0 ? { completedAt: new Date().toISOString(), items: orderedItems } : s.lastOrder,
     }));
   }, []);
 

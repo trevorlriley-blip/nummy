@@ -15,6 +15,7 @@ import { AgentProvider } from './AgentContext';
 import { MyRecipesProvider } from './MyRecipesContext';
 import { PantryProvider } from './PantryContext';
 import { OrderingProvider } from './OrderingContext';
+import { RecapProvider } from './RecapContext';
 
 function ThemedApp({ children }: { children: React.ReactNode }) {
   const { isDark } = useThemeMode();
@@ -31,9 +32,11 @@ function ThemedApp({ children }: { children: React.ReactNode }) {
                   <OrderingProvider>
                   <GroceryListProvider>
                     <FeedbackProvider>
-                      <AgentProvider>
-                        {children}
-                      </AgentProvider>
+                      <RecapProvider>
+                        <AgentProvider>
+                          {children}
+                        </AgentProvider>
+                      </RecapProvider>
                     </FeedbackProvider>
                   </GroceryListProvider>
                   </OrderingProvider>

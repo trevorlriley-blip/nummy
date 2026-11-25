@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
+import { STORAGE_KEYS, saveToStorage, loadFromStorage } from '../utils/storage';
 import { MealFeedback, FeedbackSummary } from '../types/feedback';
 import { PlannedMeal } from '../types/mealPlan';
 import { sampleFeedback } from '../data/feedback';
@@ -17,6 +18,18 @@ const FeedbackContext = createContext<FeedbackContextValue | undefined>(undefine
 
 export function FeedbackProvider({ children }: { children: React.ReactNode }) {
   const [feedbackEntries, setFeedbackEntries] = useState<MealFeedback[]>(sampleFeedback);
+  const isLoaded = useRef(false);
+
+  useEffect(() => {
+    loadFromStorage<MealFeedback[]>(STORAGE_KEYS.FEEDBACK).then((stored) => {
+      if (stored) setFeedbackEntries(stored);
+      isLoaded.current = true;
+    });
+  }, []);
+
+  useEffect(() => {
+    if (isLoaded.current) saveToStorage(STORAGE_KEYS.FEEDBACK, feedbackEntries);
+  }, [feedbackEntries]);
 
   const submitFeedback = useCallback(
     (feedback: Omit<MealFeedback, 'id' | 'createdAt'>) => {
@@ -25,7 +38,12 @@ export function FeedbackProvider({ children }: { children: React.ReactNode }) {
         id: `fb-${Date.now()}`,
         createdAt: new Date().toISOString(),
       };
-      setFeedbackEntries((prev) => [...prev, entry]);
+      // One entry per planned meal: a later rating (e.g. from the Weekend Recap) replaces the earlier one.
+      setFeedbackEntries((prev) => {
+        const existing = prev.find((f) => f.plannedMealId === feedback.plannedMealId);
+        if (!existing) return [...prev, entry];
+        return prev.map((f) => (f === existing ? { ...entry, id: existing.id } : f));
+      });
     },
     []
   );

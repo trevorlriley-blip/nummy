@@ -186,6 +186,14 @@ export default function GroceryListScreen() {
         >
           Order at Smith's
         </Button>
+        <Button
+          mode="outlined"
+          icon="calendar-star"
+          onPress={() => router.push('/recap' as any)}
+          style={styles.snapButton}
+        >
+          Weekend Recap
+        </Button>
         <UseFirstCard />
         <RequestsCard />
 

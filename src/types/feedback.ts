@@ -7,6 +7,8 @@ export interface MealFeedback {
   /** Rating from 1 to 5 */
   rating?: 1 | 2 | 3 | 4 | 5;
   notes?: string;
+  /** Set by the Weekend Recap when the family ate out instead of cooking. */
+  ateOut?: boolean;
   createdAt: string;
 }
 
